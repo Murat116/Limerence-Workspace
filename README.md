@@ -11,8 +11,9 @@ Limerence-Workspace/
 ├── docs/            # Единая документация (specs, monetization, constructor)
 ├── supabase/        # Единая схема БД, migrations, edge functions
 ├── shared/          # Общий код (Supabase types, утилиты)
-├── skills/          # Agent skills для Cursor
-└── .cursor/rules/   # Cursor rules (common, mobile, web, scope)
+├── .cursor/
+│   ├── rules/       # Cursor rules (common, mobile, web, scope)
+│   └── skills/      # Agent skills для Cursor
 ```
 
 ## Как работать

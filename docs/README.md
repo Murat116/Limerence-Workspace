@@ -1,40 +1,36 @@
 # Limerence Documentation
 
-Единый индекс документации workspace. Canonical source — эта папка `docs/`.
+**Canonical source:** `Limerence-Workspace/docs/`. Notion — для обсуждений, не authority.
 
-## Карта
+## Structure
 
-| Папка | Область | Затрагивает |
-|-------|---------|-------------|
-| [`monetization/`](./monetization/) | SKU, paywalls, store catalog, billing, iOS impl plan | mobile + web + supabase |
-| [`gameplay/`](./gameplay/) | Сущности геймплея (диалог, сцена, глава, …) | mobile (+ web preview) |
-| [`product/`](./product/) | Аналитика, версии, Paywall BR | mobile |
-| [`specs/`](./specs/) | Полное зеркало `Спецификация/` для symlink из mobile | mobile |
-| [`constructor/`](./constructor/) | Веб-конструктор, алгоритмы, UX автора | web |
-| [`architecture/`](./architecture/) | Диаграммы, sequence flows | mobile |
+| Path | Layer | Scope |
+|------|-------|-------|
+| [`specs/`](./specs/) | Spec | Gameplay entities, paywall BR, analytics, app policies |
+| [`monetization/`](./monetization/) | Domain | SKU, catalog, entitlements, impl plans |
+| [`web/`](./web/) | Impl + spec | Author constructor |
+| [`architecture/`](./architecture/) | Impl | Diagrams, sequences |
+| [`_meta/`](./_meta/) | Meta | Conventions, glossary, path mapping |
 
-## Ключевые документы
+## Key documents
 
-| Документ | Путь |
-|----------|------|
-| Paywall BR (mobile UI) | `product/monetization/Paywall.md` |
-| iOS IAP plan | `monetization/IOS_IMPL_PLAN.md` |
-| Product model | `monetization/PRODUCT_MODEL.md` |
-| Constructor codebase | `constructor/codebase-overview.md` |
-| Algorithm logic | `constructor/algorithm-logic.md` |
-| Gameplay overview | `specs/Логика геймплея/Логика геймплея.md` |
-| Tech architecture | `specs/Техническая документация.md` |
+| Document | Scope | Consumers |
+|----------|-------|-----------|
+| [specs/gameplay/entities/Глава.md](./specs/gameplay/entities/Глава.md) | cross-cutting | mobile UI, web ChapterInspector |
+| [monetization/PRODUCT_MODEL.md](./monetization/PRODUCT_MODEL.md) | shared | mobile, web, supabase |
+| [specs/monetization/paywall.md](./specs/monetization/paywall.md) | mobile | Paywall UI, entitlements |
+| [monetization/ENTITLEMENTS.md](./monetization/ENTITLEMENTS.md) | shared | Resolver, gates |
+| [web/codebase-overview.md](./web/codebase-overview.md) | web | editor-app |
+| [web/algorithm-logic.md](./web/algorithm-logic.md) | web | AnalysisService |
 
-## Правила работы со спеками
+## Workflow
 
-- Gameplay/product logic: spec в `docs/` → `@see` в коде → spec и код в одном PR.
-- Cross-cutting фичи (monetization, analytics): сверять `docs/monetization/` и `docs/product/monetization/`.
+1. Read canonical doc in `docs/`
+2. Implement with `@see docs/...` in code
+3. Spec + code in same task
 
-## Symlinks
+See [_meta/conventions.md](./_meta/conventions.md).
 
-| Nested repo | Symlink | Target |
-|-------------|---------|--------|
-| `mobile/Спецификация` | → | `docs/specs/` |
-| `mobile/docs` | → | `docs/` |
-| `web/docs` | → | `docs/` |
-| `web/Спецификация` | → | `docs/constructor/` |
+## Nested repos
+
+Open **Limerence-Workspace** as Cursor root. Mobile `@see` paths use `docs/specs/...` (workspace-relative).

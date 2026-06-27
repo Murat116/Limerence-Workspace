@@ -2,7 +2,7 @@
 
 Технический план реализации store-monetization в React Native приложении.
 
-@see [Paywall.md](../product/monetization/Paywall.md) — бизнес-требования paywall UI  
+@see [Paywall.md](../specs/monetization/paywall.md) — бизнес-требования paywall UI  
 @see [PRODUCT_MODEL.md](./PRODUCT_MODEL.md) — SKU и entitlements  
 @see [STORE_CATALOG.md](./STORE_CATALOG.md) — price tiers, purchase intent  
 @see [PAYWALLS.md](./PAYWALLS.md) — PW-01…PW-11 сценарии
@@ -18,10 +18,10 @@
 
 | Concern | Path |
 |---------|------|
-| Service layer | `mobile/src/Service/Monetization/` |
-| Redux | `mobile/src/App/store/monetization/` |
-| UI | `mobile/src/Feature/Monetization/` |
-| Gates | `mobile/src/Common/hooks/useEntitlementGate.ts` |
+| Service layer | `../../../mobile/src/Service/Monetization/` |
+| Redux | `../../../mobile/src/App/store/monetization/` |
+| UI | `../../../mobile/src/Feature/Monetization/` |
+| Gates | `../../../mobile/src/Common/hooks/useEntitlementGate.ts` |
 
 ## Implementation checklist
 

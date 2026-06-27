@@ -1,0 +1,59 @@
+---
+description: Documentation system — canonical paths, layers, scope tags, spec-before-code workflow
+alwaysApply: true
+---
+
+# Documentation — Limerence Workspace
+
+## Source of truth
+
+**`docs/` in Limerence-Workspace** — единственный canonical source. Notion — для обсуждений.
+
+## Layers
+
+| Layer | Path | Use for |
+|-------|------|---------|
+| **Domain** | `docs/monetization/` | SKU, catalog, entitlements, billing |
+| **Spec** | `docs/specs/` | Gameplay entities, paywall BR, analytics, policies |
+| **Impl** | `docs/monetization/*_PLAN.md`, `docs/web/` | Code maps, constructor architecture |
+| **Meta** | `docs/_meta/` | Conventions, glossary, discrepancy matrix |
+
+## Scope tags
+
+Declare at task start: `mobile` | `web` | `shared` | `cross-cutting`
+
+| Scope | Primary paths |
+|-------|---------------|
+| mobile | `mobile/src/**` |
+| web | `web/editor-app/**` |
+| shared | `docs/monetization/`, `supabase/`, `docs/specs/gameplay/entities/` |
+| cross-cutting | monetization, analytics schema, chapter release |
+
+## Code references
+
+Use workspace-relative `@see`:
+
+```ts
+/** @see docs/specs/gameplay/entities/Глава.md */
+/** @see docs/specs/monetization/paywall.md */
+/** @see docs/monetization/ENTITLEMENTS.md */
+```
+
+Never use legacy `Спецификация/` paths.
+
+## Workflow
+
+1. Read canonical doc before gameplay/monetization changes
+2. Update doc + code in same task
+3. Cross-cutting: check `docs/_meta/discrepancy-matrix.md`
+4. Run `scripts/validate-docs.sh` after doc edits
+
+## Key index
+
+| Need | Read first |
+|------|------------|
+| Gameplay entity | `docs/specs/gameplay/entities/` |
+| Paywall UI | `docs/specs/monetization/paywall.md` |
+| SKU / entitlements | `docs/monetization/PRODUCT_MODEL.md`, `ENTITLEMENTS.md` |
+| Constructor | `docs/web/codebase-overview.md` |
+| Path migration | `docs/_meta/path-mapping.md` |

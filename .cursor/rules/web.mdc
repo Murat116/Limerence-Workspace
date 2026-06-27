@@ -99,11 +99,12 @@ Source of truth: `docs/monetization/`. Detailed docs: `docs/constructor/`.
 
 | Topic | Path |
 |-------|------|
-| Codebase overview | `docs/constructor/codebase-overview.md` |
-| Algorithm logic | `docs/constructor/algorithm-logic.md` |
-| User functionality | `docs/constructor/user-functionality.md` |
-| Story constructor spec | `docs/constructor/story-constructor-spec.md` |
-| Character layers | `docs/constructor/character-layers.md` |
+| Codebase overview | `docs/web/codebase-overview.md` |
+| Algorithm logic | `docs/web/algorithm-logic.md` |
+| User functionality | `docs/web/user-functionality.md` |
+| Story constructor spec | `docs/web/story-constructor-spec.md` |
+| Character layers | `docs/web/character-layers.md` |
+| Import text | `docs/web/import-text-guide.md` |
 
 ## Anti-Patterns
 

@@ -1,59 +1,37 @@
 ---
-description: Workspace task routing — determine mobile, web, shared, or cross-cutting scope before acting
+description: Workspace task routing — mobile, web, shared, cross-cutting
 alwaysApply: true
 ---
 
-# Workspace Scope — Task Routing
+# Workspace Scope
 
-**В начале каждой задачи явно назови область:** `mobile` | `web` | `shared` | `cross-cutting`.
-
-## Decision tree
-
-1. Путь файла начинается с `mobile/` → **mobile**
-2. Путь файла начинается с `web/` → **web**
-3. Путь в `supabase/`, `docs/`, `shared/`, `.cursor/rules/` → **shared**
-4. Задача затрагивает monetization, gameplay entity, analytics schema, entitlements → **cross-cutting** (mobile + web + docs + supabase)
+**Declare scope at task start:** `mobile` | `web` | `shared` | `cross-cutting`
 
 ## Path map
 
-| Область | Пути | Репозиторий |
-|---------|------|-------------|
-| **Mobile** | `mobile/src/**`, `mobile/ios/**`, `mobile/android/**`, `mobile/App.tsx` | Limerence-RN |
-| **Web** | `web/editor-app/**` | Limerence-Author-Web-App |
-| **Shared** | `docs/**`, `supabase/**`, `shared/**`, `skills/**` | Limerence-Workspace |
-| **Specs (via symlink)** | `mobile/Спецификация/**` → `docs/specs/**` | workspace |
+| Scope | Paths | Docs |
+|-------|-------|------|
+| **Mobile** | `mobile/src/**` | `docs/specs/monetization/paywall.md`, `docs/specs/gameplay/` |
+| **Web** | `web/editor-app/**` | `docs/web/`, `docs/monetization/CONSTRUCTOR_IMPL_PLAN.md` |
+| **Shared** | `supabase/**`, `shared/**`, `docs/monetization/` | Domain + schema |
+| **Cross-cutting** | monetization, entities, analytics | `docs/_meta/discrepancy-matrix.md` |
 
-## Keyword hints
+## Rules
 
-| Ключевые слова | Область |
-|----------------|---------|
-| paywall, StoreKit, Reanimated, Quest screen, Redux thunk | mobile |
-| React Flow, inspector, author settings, graph node | web |
-| migration, RLS, edge function, `iap_price_tiers` | shared (supabase) |
-| Диалог, Сцена, Глава, Paywall BR, entitlement | cross-cutting |
+| File | Scope |
+|------|-------|
+| `documentation.mdc` | Doc system (always) |
+| `common.mdc` | Specs, comments |
+| `mobile.mdc` | `mobile/**` |
+| `web.mdc` | `web/**` |
 
 ## Cross-cutting checklist
 
-При изменении monetization / gameplay / analytics:
+Monetization / gameplay entity changes:
 
-1. `docs/` — spec или monetization doc
-2. `supabase/migrations/` — schema если нужно
-3. `mobile/src/` — player behavior
-4. `web/editor-app/` — constructor / author UI если затронуто
+1. `docs/specs/` or `docs/monetization/`
+2. `supabase/migrations/` if schema
+3. `mobile/src/` if player behavior
+4. `web/editor-app/` if author UI
 
-Сверять: `docs/monetization/` ↔ `docs/product/monetization/Paywall.md` ↔ `docs/specs/Монетизация/`.
-
-## Rules map
-
-| Файл | Когда |
-|------|-------|
-| `common.mdc` | Спеки, комментарии, @see |
-| `mobile.mdc` | Работа в `mobile/**` |
-| `web.mdc` | Работа в `web/**` |
-| `workspace-scope.mdc` | Всегда — маршрутизация |
-
-## Anti-patterns
-
-- Менять `supabase/migrations/` только в nested repo — migrations только в umbrella `supabase/`
-- Реализовать gameplay без чтения `docs/specs/` или `docs/gameplay/`
-- Править monetization UI в mobile без сверки `docs/monetization/`
+Open **Limerence-Workspace** as Cursor root.
