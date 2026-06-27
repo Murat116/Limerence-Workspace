@@ -43,10 +43,11 @@ Never use legacy `Спецификация/` paths.
 
 ## Workflow
 
-1. Read canonical doc before gameplay/monetization changes
-2. Update doc + code in same task
-3. Cross-cutting: check `docs/_meta/discrepancy-matrix.md`
-4. Run `scripts/validate-docs.sh` after doc edits
+1. Read canonical doc in `docs/` before gameplay/monetization changes
+2. Follow shared code style and no-legacy contract (`common.mdc`)
+3. Update doc + code in same task
+4. Cross-cutting: check `docs/_meta/discrepancy-matrix.md`
+5. Run `scripts/validate-docs.sh` after doc edits
 
 ## Key index
 

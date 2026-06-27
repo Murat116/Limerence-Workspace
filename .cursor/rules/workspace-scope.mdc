@@ -21,7 +21,7 @@ alwaysApply: true
 | File | Scope |
 |------|-------|
 | `documentation.mdc` | Doc system (always) |
-| `common.mdc` | Specs, comments |
+| `common.mdc` | Code style, spec contract, no-legacy, comments |
 | `mobile.mdc` | `mobile/**` |
 | `web.mdc` | `web/**` |
 

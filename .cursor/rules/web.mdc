@@ -55,16 +55,11 @@ web/editor-app/src/
 
 Services talk to Supabase; schema lives in umbrella `supabase/migrations/`.
 
-## Code Style
-
-- Functional components, named exports preferred
-- Co-locate tests in `__tests__/` next to source
-- Pure logic in `utils/` and `mappers/` — unit testable
-- Types in `types/` and `services/dto/DatabaseDTOs.ts`
+Code style, spec contract, no-legacy: **`common.mdc`**.
 
 ## Monetization (Constructor)
 
-Source of truth: `docs/monetization/`. Detailed docs: `docs/constructor/`.
+Source of truth: `docs/monetization/`. Detailed docs: `docs/web/`.
 
 ### Product rules
 
@@ -116,5 +111,6 @@ Source of truth: `docs/monetization/`. Detailed docs: `docs/constructor/`.
 ## Related
 
 - Cross-app monetization: `docs/monetization/`
-- Mobile paywall BR: `docs/product/monetization/Paywall.md`
+- Mobile paywall BR: `docs/specs/monetization/paywall.md`
+- Shared rules: `common.mdc`
 - Scope routing: `workspace-scope.mdc`

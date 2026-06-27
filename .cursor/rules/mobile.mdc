@@ -63,17 +63,6 @@ UI must not import DTO types. Thunks call Services; Services return Domain; mapp
 
 ---
 
-## Code Style
-
-- Functional components only; **named exports** (no default exports for new code)
-- Prefer `interface` over `type`; avoid `enum` (use union types or `as const`)
-- File order: component → subcomponents → helpers → constants → types
-- Folders: `kebab-case`; components: `PascalCase`; booleans: `is/has/can` prefix
-- Structured logging: `console.log({ event: 'Service.method', id })`
-- Prefer early returns; avoid deep nesting
-
----
-
 ## Styling
 
 Use `StyleSheet.create` at file bottom. Tokens: `src/theme.ts` — `DesignSystemColors`, `Padding`, `Margin`, `BorderRadius`. Typography: `Font` from `src/UIComponents/styles/Font.tsx`.
@@ -108,38 +97,6 @@ Use `StyleSheet.create` at file bottom. Tokens: `src/theme.ts` — `DesignSystem
 
 ---
 
-## Specification References
-
-When implementing gameplay logic from `Спецификация/`:
-
-```ts
-// See: Спецификация/Логика геймлея/Сущности/Диалог.md
-export function resolveDialogFrame(...) { }
-```
-
-Add `@see Спецификация/...` in file-level JSDoc for slices, services, and complex UI.
-
----
-
-## No Legacy — Spec Is the Contract
-
-**Do not preserve legacy code for backward compatibility.** If behavior is outdated, duplicated, or cannot be traced to `Спецификация/` (or `Спецификация/Техническая документация.md` for architecture) — **remove it**, don't wrap in feature flags or leave «just in case» branches.
-
-**Safe deletion rule:** logic may be removed only when it is **not** described in specs. Therefore **every new or changed business rule must be documented in `Спецификация/` before or together with the code change** — not as an afterthought.
-
-| Situation | Action |
-|-----------|--------|
-| Code has no spec reference and purpose is unclear | Delete (or stop and ask — do not guess and keep) |
-| Code contradicts current spec | Update code to match spec; delete the old path |
-| Intentional behavior change | **Update spec first or in the same PR**, then change code |
-| Refactor touching gameplay | Verify spec still covers all branches; extend spec if a branch was only in code |
-
-Do **not** add `@deprecated` shims, parallel code paths, or «fallback for old behavior» unless the spec explicitly requires transitional behavior.
-
-See **`specification.mdc`** for workflow and spec writing conventions.
-
----
-
 ## Anti-Patterns
 
 ```ts
@@ -159,40 +116,18 @@ extraReducers: (b) => b.addCase(advanceReplica, (s) => {
 // ✅ Reducer applies prepared payload; thunks orchestrate
 ```
 
-```ts
-// ❌ Default export for new components
-export default function SceneScreen() {}
-
-// ✅ Named export
-export function SceneScreen() {}
-```
-
-```ts
-// ❌ Legacy branch «на всякий случай»
-if (useLegacyDialogFrame) { ... } else { ... }
-
-// ✅ Одна реализация, описанная в Спецификация/…; старый путь удалён
-```
-
-```ts
-// ❌ Недокументированная бизнес-логика «пока оставим»
-function mysteryReplicaSkip() { ... }
-
-// ✅ Правило в spec → код со ссылкой @see → тест на pure-логику
-```
-
 ---
 
 ## Related Rules
 
-- UI components, theme, screens: `ui-components.mdc`
-- Animations (Reanimated): `animation.mdc`
-- Redux slices/thunks: `redux-store.mdc`
-- Service layer: `service-layer.mdc`
-- Quest UI & transitions: `quest-feature.mdc`
-- Decomposed feature screens (UIModel): `screen-ui.mdc`
-- Gameplay specs workflow: `specification.mdc`
-- Comments preservation: `comments.mdc`
+- Shared code style, spec contract, no-legacy: `common.mdc`
+- Docs system: `documentation.mdc`
+- UI components, theme, screens: `ui-components.mdc` (below)
+- Animations (Reanimated): `animation.mdc` (below)
+- Redux slices/thunks: `redux-store.mdc` (below)
+- Service layer: `service-layer.mdc` (below)
+- Quest UI & transitions: `quest-feature.mdc` (below)
+- Decomposed feature screens (UIModel): `screen-ui.mdc` (below)
 
 ---
 

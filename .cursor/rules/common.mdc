@@ -1,25 +1,47 @@
 ---
-description: Spec workflow, comments preservation — applies across mobile and web
+description: Shared code style, comments, spec contract, no-legacy — mobile and web
 alwaysApply: true
 ---
 
 # Common Rules — Limerence Workspace
 
+Applies to **mobile** and **web**. Stack-specific patterns stay in `mobile.mdc` / `web.mdc`.
+
+## Code Style (shared)
+
+- Functional components only; **named exports** (no default exports for new code)
+- Prefer `interface` over `type`; avoid `enum` (use union types or `as const`)
+- File order: component → subcomponents → helpers → constants → types
+- Folders: `kebab-case`; components: `PascalCase`; booleans: `is/has/can` prefix
+- Structured logging: `console.log({ event: 'Service.method', id })`
+- Prefer early returns; avoid deep nesting
+- Co-locate tests in `__tests__/` next to source
+- Pure logic in `utils/` / `mappers/` — unit testable, no React in pure helpers
+- Types: dedicated `types/` or `services/dto/` — UI must not import raw DB shapes without mappers
+
+| Concern | Mobile | Web |
+|---------|--------|-----|
+| Styling | `StyleSheet` + `theme.ts` — see `mobile.mdc` | Tailwind — see `web.mdc` |
+| State | Redux Toolkit — see `mobile.mdc` | Zustand — see `web.mdc` |
+| Data layer | Service → Manager → Repository | `*Service.ts` + mappers |
+
 ## Comments — preserve, don't delete
 
-When editing code, preserving existing documentation has higher priority than cleanup.
+Preserving existing documentation has **higher priority** than cleanup.
 
-- Keep `@see docs/...` links; migrate when moving code
-- Keep «why» comments and JSDoc
-- Gameplay logic → update spec in `docs/specs/` + `@see` in code
+**Never remove (unless behavior was deleted):** file-level JSDoc, `@see docs/...`, field docs, «why» comments, section markers, still-relevant `eslint-disable`.
+
+**Safe to remove:** stale TODOs, changelog noise, comments that verbatim duplicate the next line, dead commented-out code.
+
+When refactoring — **migrate** comments to the new symbol/file, don't drop them.
 
 ## Spec before code
 
-**Source of truth:** `docs/specs/` and `docs/monetization/`.
+**Source of truth:** `docs/specs/` and `docs/monetization/`. See `documentation.mdc` for layers and paths.
 
 1. Read relevant spec before coding
-2. Update spec if behavior changes
-3. Implement with `@see docs/specs/...`
+2. Update spec if behavior changes (same task as code)
+3. Implement with `@see docs/specs/...` or `@see docs/monetization/...`
 4. Remove code paths not in spec
 
 ### Entity index
@@ -34,5 +56,39 @@ When editing code, preserving existing documentation has higher priority than cl
 | Paywall BR | `docs/specs/monetization/paywall.md` |
 | Entitlements | `docs/monetization/ENTITLEMENTS.md` |
 | Analytics events | `docs/specs/analytics-events.md` |
+| Tech architecture | `docs/specs/tech-architecture.md` |
 
-See `documentation.mdc` for full system.
+## No Legacy — Spec Is the Contract
+
+**Do not preserve legacy code for backward compatibility.** If behavior is outdated, duplicated, or cannot be traced to `docs/specs/` (or `docs/specs/tech-architecture.md` for architecture) — **remove it**. No feature flags or «just in case» branches.
+
+**Safe deletion rule:** logic may be removed only when it is **not** described in docs. Every new or changed business rule must be documented **before or together with** the code change.
+
+| Situation | Action |
+|-----------|--------|
+| Code has no spec reference and purpose is unclear | Delete (or stop and ask — do not guess and keep) |
+| Code contradicts current spec | Update code to match spec; delete the old path |
+| Intentional behavior change | Update spec first or in the same PR, then change code |
+| Refactor touching gameplay/product | Verify spec covers all branches; extend spec if a branch was only in code |
+
+Do **not** add `@deprecated` shims, parallel code paths, or «fallback for old behavior» unless the spec explicitly requires transitional behavior.
+
+### Shared anti-patterns
+
+```ts
+// ❌ Legacy branch «на всякий случай»
+if (useLegacyDialogFrame) { ... } else { ... }
+
+// ✅ One implementation in spec; old path removed
+
+// ❌ Undocumented business logic «пока оставим»
+function mysteryReplicaSkip() { ... }
+
+// ✅ Rule in docs/specs → @see in code → test pure logic
+
+// ❌ Default export for new components
+export default function SceneScreen() {}
+
+// ✅ Named export
+export function SceneScreen() {}
+```
