@@ -1,0 +1,119 @@
+---
+description: Web constructor — React/Vite editor, Zustand, React Flow, services, monetization config
+globs: ["web/**"]
+alwaysApply: false
+---
+
+# Web — Limerence Author Constructor
+
+Rules for `web/` (Limerence-Author-Web-App). Main app code: `web/editor-app/`.
+
+## Tech Stack
+
+- **Framework:** React 19 + TypeScript
+- **Build:** Vite
+- **Styling:** Tailwind CSS
+- **State:** Zustand (`web/editor-app/src/store/`)
+- **Graph UI:** React Flow (`web/editor-app/src/components/nodes/`, `edges/`)
+- **Backend:** Supabase (`web/editor-app/src/services/`)
+- **Testing:** Vitest (`web/editor-app/src/**/__tests__/`)
+
+## Project Structure
+
+```
+web/editor-app/src/
+├── components/     # UI — FlowEditor, Inspector, ProjectTree, nodes, inspectors
+├── store/          # Zustand stores (storyStore, analysisStore, …)
+├── services/       # Supabase CRUD, DataMappingService, AnalysisService
+├── mappers/        # DTO ↔ domain mapping
+├── hooks/          # React hooks
+├── pages/          # Route pages (StorySettingsPage, …)
+├── types/          # TypeScript types
+└── utils/          # Pure helpers
+```
+
+## Layout Pattern
+
+- **TopBar** — save/load, global actions
+- **ProjectTree** (left) — book/chapter/stats hierarchy
+- **FlowEditor** (center) — React Flow graph
+- **Inspector** (right) — selected node properties
+- Resizable panels: `react-resizable-panels`
+
+## Services Layer
+
+| Service | Role |
+|---------|------|
+| `StoryService` | Story CRUD |
+| `CreateService` | Entity creation |
+| `UpdateService` | Entity updates |
+| `DatabaseOperationsService` | Batch DB ops |
+| `DataMappingService` | DTO mapping |
+| `AnalysisService` | Validation, graph analysis |
+| `MonetizationService` | Price tiers, story/chapter monetization |
+| `AuthorAnalyticsService` | Author-facing analytics |
+
+Services talk to Supabase; schema lives in umbrella `supabase/migrations/`.
+
+## Code Style
+
+- Functional components, named exports preferred
+- Co-locate tests in `__tests__/` next to source
+- Pure logic in `utils/` and `mappers/` — unit testable
+- Types in `types/` and `services/dto/DatabaseDTOs.ts`
+
+## Monetization (Constructor)
+
+Source of truth: `docs/monetization/`. Detailed docs: `docs/constructor/`.
+
+### Product rules
+
+- **SKU:** Story Pass (platform sub), Полный доступ (`full_story`), Chapter Pass only
+- **No per-variant IAP** — premium choices via sub or Pass; always offer free alternative variant
+- Authors pick **price tier** from `iap_price_tiers`, never arbitrary price or manual product id
+- **Free read by default** — `requires_pass_to_read` blocks reading without Pass
+
+### Entitlement priority
+
+`full_story` > `chapter_pass` > `subscription` (Story Pass) > free path
+
+### DB fields
+
+- `story_monetization`: `full_story_tier_key`, `requires_pass_to_read`
+- `chapter_monetization`: `chapter_pass_tier_key`, `requires_pass_to_read`, `subscriber_early_access_days`
+- `Variant`: `is_premium` only in UI (no per-choice tier)
+
+### Validation (AnalysisService)
+
+- Premium dialog MUST have at least one non-premium variant
+- Warn if full_story tier < sum of chapter tiers (non-blocking)
+
+### UI
+
+- Story settings route: `/story/:id/settings/monetization`
+- Tier dropdowns from `MonetizationService.fetchTiers(sku_type)`
+- Do not enable free-form price inputs
+- Chapter release: `chapterRelease.ts` + `subscriber_early_access_days`
+
+## Constructor Docs
+
+| Topic | Path |
+|-------|------|
+| Codebase overview | `docs/constructor/codebase-overview.md` |
+| Algorithm logic | `docs/constructor/algorithm-logic.md` |
+| User functionality | `docs/constructor/user-functionality.md` |
+| Story constructor spec | `docs/constructor/story-constructor-spec.md` |
+| Character layers | `docs/constructor/character-layers.md` |
+
+## Anti-Patterns
+
+- Hardcoded Supabase table shapes — use `DatabaseDTOs.ts` and mappers
+- Monetization UI with free-form prices
+- Graph validation only in UI — use `AnalysisService`
+- Schema changes only in `web/` — migrations go to umbrella `supabase/migrations/`
+
+## Related
+
+- Cross-app monetization: `docs/monetization/`
+- Mobile paywall BR: `docs/product/monetization/Paywall.md`
+- Scope routing: `workspace-scope.mdc`

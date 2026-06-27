@@ -1,0 +1,59 @@
+---
+description: Workspace task routing — determine mobile, web, shared, or cross-cutting scope before acting
+alwaysApply: true
+---
+
+# Workspace Scope — Task Routing
+
+**В начале каждой задачи явно назови область:** `mobile` | `web` | `shared` | `cross-cutting`.
+
+## Decision tree
+
+1. Путь файла начинается с `mobile/` → **mobile**
+2. Путь файла начинается с `web/` → **web**
+3. Путь в `supabase/`, `docs/`, `shared/`, `.cursor/rules/` → **shared**
+4. Задача затрагивает monetization, gameplay entity, analytics schema, entitlements → **cross-cutting** (mobile + web + docs + supabase)
+
+## Path map
+
+| Область | Пути | Репозиторий |
+|---------|------|-------------|
+| **Mobile** | `mobile/src/**`, `mobile/ios/**`, `mobile/android/**`, `mobile/App.tsx` | Limerence-RN |
+| **Web** | `web/editor-app/**` | Limerence-Author-Web-App |
+| **Shared** | `docs/**`, `supabase/**`, `shared/**`, `skills/**` | Limerence-Workspace |
+| **Specs (via symlink)** | `mobile/Спецификация/**` → `docs/specs/**` | workspace |
+
+## Keyword hints
+
+| Ключевые слова | Область |
+|----------------|---------|
+| paywall, StoreKit, Reanimated, Quest screen, Redux thunk | mobile |
+| React Flow, inspector, author settings, graph node | web |
+| migration, RLS, edge function, `iap_price_tiers` | shared (supabase) |
+| Диалог, Сцена, Глава, Paywall BR, entitlement | cross-cutting |
+
+## Cross-cutting checklist
+
+При изменении monetization / gameplay / analytics:
+
+1. `docs/` — spec или monetization doc
+2. `supabase/migrations/` — schema если нужно
+3. `mobile/src/` — player behavior
+4. `web/editor-app/` — constructor / author UI если затронуто
+
+Сверять: `docs/monetization/` ↔ `docs/product/monetization/Paywall.md` ↔ `docs/specs/Монетизация/`.
+
+## Rules map
+
+| Файл | Когда |
+|------|-------|
+| `common.mdc` | Спеки, комментарии, @see |
+| `mobile.mdc` | Работа в `mobile/**` |
+| `web.mdc` | Работа в `web/**` |
+| `workspace-scope.mdc` | Всегда — маршрутизация |
+
+## Anti-patterns
+
+- Менять `supabase/migrations/` только в nested repo — migrations только в umbrella `supabase/`
+- Реализовать gameplay без чтения `docs/specs/` или `docs/gameplay/`
+- Править monetization UI в mobile без сверки `docs/monetization/`

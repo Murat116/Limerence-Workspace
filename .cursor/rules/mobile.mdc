@@ -1,0 +1,1760 @@
+---
+description: React Native app — architecture, UI, Redux, services, quest, animations, monetization iOS
+globs: ["mobile/**"]
+alwaysApply: false
+---
+# Mobile — Limerence RN
+
+Rules for `mobile/` (React Native 0.79 player app). Paths below are relative to workspace root.
+
+
+---
+
+# React Native (`react-native.mdc`)
+
+# Limerence — Project Architecture and Code Style
+
+## Tech Stack
+
+- **Framework:** React Native 0.79 (CLI, not Expo-managed)
+- **Language:** TypeScript 5.x (`strict`)
+- **UI:** React 19, `StyleSheet.create`, `react-native-reanimated` 3.x, `react-native-gesture-handler`
+- **Navigation:** `@react-navigation/native` + native-stack / bottom-tabs (`src/navigation/`)
+- **State:** Redux Toolkit + `react-redux` (primary); Zustand only where already used
+- **Backend:** Supabase (`@supabase/supabase-js`)
+- **Storage:** `@react-native-async-storage/async-storage`, `react-native-fs` for assets
+- **Testing:** Jest (unit tests co-located in `__tests__/`)
+
+**Key dependencies:** `react-native-svg`, `lottie-react-native`, `react-native-safe-area-context`
+
+---
+
+## Project Structure
+
+```
+/Спецификация     # Business logic specs (Russian) — source of truth for gameplay rules
+/src
+├── App/          # Redux store, thunks, app-level logic
+├── Feature/      # Feature modules (Quest, Story, Auth, …)
+├── UIComponents/ # Shared UI primitives
+├── Common/       # Shared models, hooks, utilities
+├── Service/      # Service / Manager / Repository layer
+└── navigation/   # React Navigation setup
+```
+
+---
+
+## Architectural Layers
+
+| Layer | Role | Example |
+|-------|------|---------|
+| **Service** | Facade for UI/thunks; cache-then-network | `QuestService`, `StoriesService` |
+| **Manager** | Local cache, AsyncStorage, file assets | `QuestManager`, `StoryManager` |
+| **Repository** | Network/API (Supabase); returns DTO | `QuestRepository` |
+| **Mapper** | DTO ↔ Domain conversion | `StoryDomainMapper` |
+
+### Model Types
+
+- **DTO** — Repository/Manager wire format (`src/Service/data/DTO/`)
+- **Domain** — Store, Service, business logic (`src/Service/data/Domain/`)
+- **UI/Common models** — Component props and Redux-facing shapes (`src/Common/models/`)
+
+UI must not import DTO types. Thunks call Services; Services return Domain; mappers convert to UI models when needed (`domainToUIMapper`).
+
+---
+
+## Code Style
+
+- Functional components only; **named exports** (no default exports for new code)
+- Prefer `interface` over `type`; avoid `enum` (use union types or `as const`)
+- File order: component → subcomponents → helpers → constants → types
+- Folders: `kebab-case`; components: `PascalCase`; booleans: `is/has/can` prefix
+- Structured logging: `console.log({ event: 'Service.method', id })`
+- Prefer early returns; avoid deep nesting
+
+---
+
+## Styling
+
+Use `StyleSheet.create` at file bottom. Tokens: `src/theme.ts` — `DesignSystemColors`, `Padding`, `Margin`, `BorderRadius`. Typography: `Font` from `src/UIComponents/styles/Font.tsx`.
+
+**Story-scoped colors:** `useStoryStylePalette` / `resolveStoryStylePalette` — see `ui-components.mdc`.
+
+**Quest/dialog frames:** `resolveFrameTextColor`, `dialogFrameTypography` — see `quest-feature.mdc`.
+
+---
+
+## Safe Area & Layout
+
+- App wrapped in `SafeAreaProvider`
+- Use `useSafeAreaInsets()` for edge-aware positioning (e.g. dialog frames)
+- Responsive layout: `useWindowDimensions`, Flexbox
+
+---
+
+## Animations
+
+- UI thread: `react-native-reanimated` — see **`animation.mdc`** for classify/hook/double-buffer patterns
+- Gestures: `react-native-gesture-handler`
+- Quest replica timing: `QuestReplicaTransitionContext` + dedicated hooks
+
+---
+
+## Error Handling
+
+- Validate at boundaries where needed; log with structured `{ event, error }`
+- Thunks: `try/catch` + `rejectWithValue` for recoverable failures
+- Prefer `if-return` over nested `if/else`
+
+---
+
+## Specification References
+
+When implementing gameplay logic from `Спецификация/`:
+
+```ts
+// See: Спецификация/Логика геймлея/Сущности/Диалог.md
+export function resolveDialogFrame(...) { }
+```
+
+Add `@see Спецификация/...` in file-level JSDoc for slices, services, and complex UI.
+
+---
+
+## No Legacy — Spec Is the Contract
+
+**Do not preserve legacy code for backward compatibility.** If behavior is outdated, duplicated, or cannot be traced to `Спецификация/` (or `Спецификация/Техническая документация.md` for architecture) — **remove it**, don't wrap in feature flags or leave «just in case» branches.
+
+**Safe deletion rule:** logic may be removed only when it is **not** described in specs. Therefore **every new or changed business rule must be documented in `Спецификация/` before or together with the code change** — not as an afterthought.
+
+| Situation | Action |
+|-----------|--------|
+| Code has no spec reference and purpose is unclear | Delete (or stop and ask — do not guess and keep) |
+| Code contradicts current spec | Update code to match spec; delete the old path |
+| Intentional behavior change | **Update spec first or in the same PR**, then change code |
+| Refactor touching gameplay | Verify spec still covers all branches; extend spec if a branch was only in code |
+
+Do **not** add `@deprecated` shims, parallel code paths, or «fallback for old behavior» unless the spec explicitly requires transitional behavior.
+
+See **`specification.mdc`** for workflow and spec writing conventions.
+
+---
+
+## Anti-Patterns
+
+```ts
+// ❌ UI calling Repository/Supabase directly
+const dto = await supabase.from('chapters').select();
+
+// ✅ UI → thunk → Service → Manager/Repository
+dispatch(initializeQuest({ userProgress, storyId }));
+```
+
+```ts
+// ❌ Business logic in reducer
+extraReducers: (b) => b.addCase(advanceReplica, (s) => {
+  s.scene = findNextScene(s.stats); // belongs in thunk/manager
+});
+
+// ✅ Reducer applies prepared payload; thunks orchestrate
+```
+
+```ts
+// ❌ Default export for new components
+export default function SceneScreen() {}
+
+// ✅ Named export
+export function SceneScreen() {}
+```
+
+```ts
+// ❌ Legacy branch «на всякий случай»
+if (useLegacyDialogFrame) { ... } else { ... }
+
+// ✅ Одна реализация, описанная в Спецификация/…; старый путь удалён
+```
+
+```ts
+// ❌ Недокументированная бизнес-логика «пока оставим»
+function mysteryReplicaSkip() { ... }
+
+// ✅ Правило в spec → код со ссылкой @see → тест на pure-логику
+```
+
+---
+
+## Related Rules
+
+- UI components, theme, screens: `ui-components.mdc`
+- Animations (Reanimated): `animation.mdc`
+- Redux slices/thunks: `redux-store.mdc`
+- Service layer: `service-layer.mdc`
+- Quest UI & transitions: `quest-feature.mdc`
+- Decomposed feature screens (UIModel): `screen-ui.mdc`
+- Gameplay specs workflow: `specification.mdc`
+- Comments preservation: `comments.mdc`
+
+---
+
+# Animation (`animation.mdc`)
+
+# Animation Conventions
+
+## Tech Stack
+
+- **Primary:** `react-native-reanimated` 3.x — `useSharedValue`, `useAnimatedStyle`, `useDerivedValue`, `withTiming`, `withSpring`, `interpolateColor`, `useReducedMotion`
+- **Layout entering/exiting:** Reanimated `FadeIn`, `FadeOut`, `FadeInDown`, `FadeOutDown`
+- **Gestures/scroll:** `useAnimatedScrollHandler`, `Gesture` from `react-native-gesture-handler`
+- **SVG:** `useAnimatedProps` for animating SVG attributes on UI thread
+- **Exception:** character-at-a-time text effects may use `requestAnimationFrame` on JS thread when Reanimated is unnecessary
+
+Import `Animated` from `react-native-reanimated`, not from `react-native`.
+
+---
+
+## withSpring vs withTiming
+
+| API | Use for |
+|-----|---------|
+| **`withSpring`** | Drag follow-through, card movement, scale/press feedback, gesture release settling |
+| **`withTiming`** | Opacity fade, color transitions, crossfade, deterministic duration-based UI (dialog swap, replica fade) |
+
+```ts
+// Scale feedback on press
+scale.value = withSpring(isPressed ? 0.96 : 1, { damping: 15, stiffness: 200 });
+
+// Fade / crossfade
+opacity.value = withTiming(0, { duration: FADE_MS, easing: Easing.inOut(Easing.ease) });
+backgroundOpacity.value = withTiming(1, { duration: CROSSFADE_MS });
+```
+
+Do not use `withSpring` for opacity/color crossfades where fixed duration matters. Do not use `withTiming` for gesture-driven position unless you intentionally want non-physical motion.
+
+Colocate spring/timing config in `*Constants.ts` — not magic numbers in hooks.
+
+---
+
+## Architecture: Logic → Hook → Component
+
+Split by **responsibility**, not line count:
+
+```
+pure transition logic (.ts)  →  animation hook (use*)     →  presentational component
+snapshot + classifier         →  shared values + styles    →  Animated.View / Text
+```
+
+| Layer | Responsibility | Extract when… |
+|-------|----------------|---------------|
+| **Pure module** | Compare before/after, return transition kind; no React/Reanimated | Logic is testable without mounting |
+| **Hook** | Owns shared values, animated styles, displayed buffer, interrupt guards | Component would mix orchestration with layout |
+| **Component** | Renders `displayed*` state + applies animated styles | — |
+
+**Do not** extract a hook just because a file is long. **Do** extract when the component owns transition orchestration, shared values, or cross-frame state.
+
+Optional pattern for content swaps: **double-buffer** — props hold target state; hook exposes `displayed*` during fade (see Quest `use*ContentTransition` hooks).
+
+---
+
+## Double-Buffer Pattern
+
+When target props change before fade completes, UI renders **displayed** state from the hook, not raw props:
+
+```tsx
+const { displayedItem, contentAnimatedStyle } = useContentTransition({ item });
+
+<Animated.View style={contentAnimatedStyle}>
+  <Text>{displayedItem.text}</Text>
+</Animated.View>
+```
+
+Never swap visible content synchronously on prop change if a fade/swap animation is in progress.
+
+---
+
+## Reduce Motion
+
+Respect system **Reduce Motion** (`useReducedMotion()` from Reanimated).
+
+When enabled:
+- **Snap** to end state — skip `withTiming` / `withSpring` / entering-exiting layout animations
+- Keep `animate={false}` path in transition hooks for init/tests — reuse for reduce motion
+- Do not disable accessibility-driven behavior with custom overrides
+
+```ts
+import { useReducedMotion } from 'react-native-reanimated';
+
+const reducedMotion = useReducedMotion();
+
+const animateTo = (shared: SharedValue<number>, target: number, duration: number) => {
+  if (reducedMotion) {
+    cancelAnimation(shared);
+    shared.value = target;
+    return;
+  }
+  shared.value = withTiming(target, { duration });
+};
+```
+
+Entering/exiting: pass `undefined` instead of `FadeIn` / `FadeOut` when `reducedMotion` is true.
+
+Document in spec if a gameplay transition must always animate despite reduce motion (rare — needs explicit product decision).
+
+---
+
+## Performance
+
+**Do not read `sharedValue.value` outside worklets** (`useAnimatedStyle`, `useDerivedValue`, `useAnimatedProps`, gesture/scroll handlers marked `'worklet'`).
+
+```ts
+// ❌ JS thread — desyncs from UI, breaks on New Architecture
+const left = animatedLeft.value;
+useEffect(() => { doSomething(animatedLeft.value); }, [x]);
+
+// ✅ UI thread
+const animatedStyle = useAnimatedStyle(() => ({
+  transform: [{ translateX: animatedLeft.value }],
+}));
+
+// ✅ Derived on UI thread
+const clamped = useDerivedValue(() => Math.min(animatedX.value, maxX));
+
+// ✅ Need JS callback — runOnJS from worklet, not .value in render
+scrollHandler = useAnimatedScrollHandler({
+  onScroll: (e) => {
+    'worklet';
+    scrollX.value = e.contentOffset.x;
+  },
+});
+```
+
+Other performance rules:
+- Prefer animating `opacity`, `transform` — cheap on compositor
+- Layout-driven size changes: measure with `onLayout`, update shared value once; avoid per-frame layout in `useAnimatedStyle`
+- Use `useDerivedValue` for computed layout math instead of syncing back to React state each frame
+- Never call `setState` inside `useAnimatedStyle`
+
+---
+
+## Interrupt Handling (Fast Tap / Rapid Input)
+
+When input can outpace animation:
+
+1. **`transitionEpochRef`** — increment per transition; ignore stale animation callbacks
+2. **`cancelAnimation` + snap** — instant assign on interrupt
+3. **`runOnJS`** — all React state updates from animation completion callbacks
+
+```ts
+frameOpacity.value = withTiming(0, { duration: FADE_MS }, (finished) => {
+  'worklet';
+  if (!finished || epoch !== transitionEpochRef.current) return;
+  runOnJS(applyDisplayed)(next);
+});
+```
+
+---
+
+## Snap vs Animate
+
+Expose `animate?: boolean` or derive from context / reduce motion:
+
+- First paint, resume, tests → snap
+- Subsequent user-driven changes → animate (unless reduce motion)
+
+Reset animation flags when container identity changes (e.g. new scene/screen id in provider).
+
+---
+
+## Cross-Component Sync
+
+When distant components share one scroll-driven animation, use **Context + SharedValues** — not prop drilling through 3+ levels.
+
+Sync scroll position in `useAnimatedScrollHandler` (`'worklet'`). Drive colors with `interpolateColor(scrollX.value, inputRange, outputRange)`.
+
+### Quest scene orchestrator
+
+`QuestReplicaTransitionProvider` coordinates replica transitions across camera, character, and dialog:
+
+1. **transitionOut** (parallel): camera pan + fade out character + fade out dialog
+2. **transitionIn** (parallel): snap + fade in new character (if visible) + dialog
+
+Hooks report completion via `reportOutComplete` / `reportInComplete`. `isInteractionLocked` blocks tap-advance and variants until idle.
+
+Pure phase logic: `questReplicaTransitionOrchestrator.ts`. Autonomous classifier mode remains for `WardrobeScreen` (no provider).
+
+Redux advances immediately; hooks gate `displayed*` state during orchestrated phases.
+
+---
+
+## Layout Animations (Entering/Exiting)
+
+For mount/unmount blocks:
+
+```tsx
+<Animated.View
+  entering={!reducedMotion ? FadeIn.duration(ENTER_MS) : undefined}
+  exiting={!reducedMotion ? FadeOut.duration(EXIT_MS) : undefined}
+>
+```
+
+Coordinate with parent: avoid duplicate fade on child when parent already animates the container.
+
+Stagger: `FadeInDown.delay(index * STAGGER_MS)`.
+
+---
+
+## Hook Template
+
+```ts
+export function useContentTransition({ target, animate = true }: Params): Result {
+  const reducedMotion = useReducedMotion();
+  const shouldAnimate = animate && !reducedMotion;
+
+  const [displayed, setDisplayed] = useState(target);
+  const opacity = useSharedValue(1);
+  const epochRef = useRef(0);
+
+  useEffect(() => {
+    const epoch = ++epochRef.current;
+
+    if (!shouldAnimate) {
+      cancelAnimation(opacity);
+      opacity.value = 1;
+      setDisplayed(target);
+      return;
+    }
+
+    opacity.value = withTiming(0, { duration: FADE_MS }, (finished) => {
+      'worklet';
+      if (!finished || epoch !== epochRef.current) return;
+      runOnJS(setDisplayed)(target);
+      opacity.value = withTiming(1, { duration: FADE_MS });
+    });
+  }, [targetKey, shouldAnimate]);
+
+  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  return { displayed, animatedStyle };
+}
+```
+
+Extract by responsibility — see Architecture table above.
+
+---
+
+## File Organization
+
+Co-locate by feature domain:
+
+```
+Feature/<Name>/
+├── hooks/use*Animation.ts       # screen-level orchestration
+├── <domain>/
+│   ├── *Transition.ts           # pure classifier (optional)
+│   ├── *AnimationConstants.ts   # durations, spring config
+│   ├── snapReanimated.ts        # cancel + snap helper
+│   └── use*Transition.ts        # hook
+└── context/                     # shared animation flags (optional)
+```
+
+---
+
+## Anti-Patterns
+
+```tsx
+// ❌ Swap content on prop change without displayed buffer
+<Text>{item.text}</Text>
+
+// ✅ displayed from transition hook
+<Text style={animatedStyle}>{displayed.text}</Text>
+```
+
+```ts
+// ❌ setState in animation callback without runOnJS
+withTiming(0, {}, () => { setDisplayed(next); });
+
+// ✅ runOnJS
+withTiming(0, {}, (f) => { if (f) runOnJS(setDisplayed)(next); });
+```
+
+```ts
+// ❌ Read shared value on JS thread
+if (opacity.value > 0.5) setVisible(true);
+
+// ✅ useAnimatedReaction or drive UI only via animated styles
+```
+
+```ts
+// ❌ withSpring for crossfade
+incomingOpacity.value = withSpring(1);
+
+// ✅ withTiming for fade
+incomingOpacity.value = withTiming(1, { duration: CROSSFADE_MS });
+```
+
+```tsx
+// ❌ Inline transition orchestration in JSX when hook owns the concern
+// ✅ Dedicated use*Transition / use*Animation hook
+```
+
+---
+
+## Testing
+
+- **Pure classifiers:** unit tests with before/after snapshot pairs
+- **Hooks:** `animate={false}` or mock `useReducedMotion → true` for deterministic state
+- **Constants:** keep related fades in sync across modules
+
+---
+
+## Reference Implementations (this repo)
+
+| Concern | Classifier | Hook |
+|---------|------------|------|
+| Dialog frame content | `dialogFrameTransition.ts` | `useDialogFrameContentTransition.ts` |
+| Character sprite | `characterSceneTransition.ts` | `useCharacterSceneTransition.ts` |
+| Background crossfade | — | `useBackgroundCrossfade.ts` |
+| Camera pan | — | `useSceneCameraPan.ts` |
+| Carousel palette | — | `useHomeScreenAnimation.ts` + `CarouselAnimationContext` |
+
+---
+
+## Related Rules
+
+- Screen/component structure: `ui-components.mdc`
+- Quest UI wiring: `quest-feature.mdc`
+- Redux state feeding animations: `redux-store.mdc`
+
+---
+
+# Ui Components (`ui-components.mdc`)
+
+# UI Components & Screens
+
+## Tech Stack (UI)
+
+- **Styling:** `StyleSheet.create` — no styled-components, no tailwind
+- **Typography:** `Font` from `src/UIComponents/styles/Font.tsx`
+- **Spacing / DS colors:** `src/theme.ts` — see **`design-colors.mdc`**
+- **Story theming:** `useStoryStylePalette` → `StoryStyleUIPalette`
+- **Gradients:** `react-native-linear-gradient`
+- **Images:** `CachedImage` for remote URLs; `number` for `require()`
+- **Animations:** `react-native-reanimated` 3.x
+- **Safe area:** `react-native-safe-area-context` (`useSafeAreaInsets`, `SafeAreaView`)
+- **Dimensions:** `windowWidth` / `windowHeight` from `src/Common/Supports/window.tsx`
+
+Quest dialog frames use separate resolvers — see `quest-feature.mdc`.
+
+---
+
+## Design Tokens (`src/theme.ts`)
+
+**Colors:** бери из дизайн-системы — `DesignSystemColors` в `src/theme.ts` (`text`, `background`, `line`). Не хардкодь hex и не добавляй новые цвета в компоненты: расширяй DS в `theme.ts`, если токена нет.
+
+- **App shell** (splash, system UI, tab bar defaults) → `DesignSystemColors.*`
+- **Story UI** → `useStoryStylePalette` / `resolveStoryStylePalette` (fallback: `DEFAULT_STORY_STYLE_PALETTE`)
+- **Feature-only** (нет в глобальной DS) → локальный `Feature/<Name>/colors.ts`
+
+**Layout:** `Padding`, `Margin`, `BorderRadius`, `Spacing` — не magic numbers.
+
+```tsx
+import { DesignSystemColors, Padding, Margin, BorderRadius } from '../../theme';
+
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: DesignSystemColors.background.primary,
+    paddingHorizontal: Padding.l,
+    borderRadius: BorderRadius.m,
+  },
+  title: {
+    color: DesignSystemColors.text.main,
+    ...Font.heading.s,
+  },
+});
+```
+
+---
+
+## Typography (`Font`)
+
+Three semantic groups × size scale:
+
+- `Font.paragraph.{xxs|xs|s|m|l|xl|xxl|xxxl}` — body text
+- `Font.subheading.{…}` — semibold labels, buttons
+- `Font.heading.{…}` — bold titles
+- `Font.thinItalic.m` — decorative quotes
+
+Font uses **SF Pro Rounded** family names — spread into `Text` style, don't set raw `fontSize` unless frame/editor data requires it.
+
+```tsx
+import { Font } from '../../UIComponents/styles/Font.tsx';
+
+<Text style={[Font.subheading.m, { color: palette.mainTextColor }]}>{title}</Text>
+```
+
+---
+
+## Story-Scoped Colors
+
+Per-story UI pulls colors from Redux `storyStyle`, not raw `DesignSystemColors`.
+
+```tsx
+import { useMemo } from 'react';
+import { useStoryStylePalette } from '../../Common/hooks/useStoryStylePalette';
+
+const palette = useStoryStylePalette(story?.storyStyle ?? null);
+const paletteStyles = useMemo(
+  () => createScreenPaletteStyles(palette),
+  [palette],
+);
+
+<View style={[styles.container, paletteStyles.screen]}>
+  <MainButton
+    text="Начать"
+    firstGradientColor={palette.buttonFirstGradientColor}
+    secondGradientColor={palette.buttonSecondGradientColor}
+    textColor={palette.buttonTextColor}
+    onPress={handlePress}
+  />
+</View>
+```
+
+Reference: `StoriesScreen` / `MyStoriesScreen` — `create*PaletteStyles(palette)` at file bottom.
+
+**Carousel / animated transitions:** `useStoryStylePalettes(stories.map(s => s.storyStyle))` — pass full array to Reanimated hooks (`useHomeScreenAnimation`).
+
+**Tab bar sync:** dispatch `updateTabBarColorsFromStoryStyleThunk` when active story changes (see `HomeScreen.tsx`).
+
+---
+
+## Shared Components (`src/UIComponents/`)
+
+Reuse before creating duplicates:
+
+| Component | Use for |
+|-----------|---------|
+| `MainButton` | Primary CTA with gradient — pass palette gradient colors |
+| `CachedImage` | Remote images with AsyncStorage cache + skeleton |
+| `StoryCover` | Story hero cover, gradients, loading progress |
+| `StoryListItem` | Story row in lists |
+| `PaginationDots` | Carousel indicators — needs `StoryStyleUIPalette[]` |
+| `SkeletonLoader` | Loading placeholder |
+| `NotificationToast` | Toast notifications |
+| `TypewriterText` | Animated typewriter effect |
+| `ProgressCircle` | Circular progress |
+| `AnimatedTabBarButton` | Tab bar item with Reanimated color |
+
+New **cross-feature** primitives go in `UIComponents/`. Feature-specific layout stays in `Feature/<Name>/components/`.
+
+---
+
+## Component Structure
+
+```tsx
+/**
+ * @file MyComponent.tsx
+ * @description One-line purpose.
+ */
+import React from 'react';
+import { View, Text, StyleSheet, ViewStyle } from 'react-native';
+import { Font } from '../../UIComponents/styles/Font.tsx';
+import { Margin } from '../../theme';
+
+interface MyComponentProps {
+  title: string;
+  onPress: () => void;
+  style?: ViewStyle;
+}
+
+export function MyComponent({ title, onPress, style }: MyComponentProps) {
+  return (
+    <View style={[styles.container, style]}>
+      <Text style={styles.title}>{title}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { marginBottom: Margin.m },
+  title: { ...Font.subheading.s },
+});
+```
+
+**Conventions:**
+- `interface` for props at top of file
+- Named export (`export function`, not `export default`)
+- `StyleSheet.create` at file bottom
+- Optional `style` / `*Style` override props for layout callers
+- JSDoc `@file` + `@description` on screens and shared components
+
+---
+
+## Screen Patterns
+
+**Сложные экраны (несколько фаз UI):** decomposed pattern — UIModel, hook, mappers, views. Эталон и полный контракт: **`screen-ui.mdc`** (`ChapterStartScreen`).
+
+```
+Feature/<Name>/
+├── screens/
+│   └── <ScreenName>/          # Decomposed screen (preferred for multi-phase)
+│       ├── <ScreenName>.tsx   # switch по UIModel.kind
+│       ├── hooks/
+│       ├── models/
+│       ├── mappers/
+│       ├── constants/
+│       └── components/
+├── components/    # Feature-shared presentational pieces
+└── hooks/         # Feature-shared animation/layout hooks
+```
+
+**Плоские экраны** (`screens/FooScreen.tsx`) — допустимы для простых layout; см. ниже.
+
+**Screens (container hook):**
+- Read state via `useAppSelector`; dispatch thunks — no direct Service calls for data loading
+- `useNavigation<RootStackNavigationProp>()` + `ROUTES` from `src/navigation/routes`
+- Account for tab bar: `const tabBarHeight = 50 + bottom` (see `HomeScreen`)
+- Extract animation orchestration to `hooks/use*Animation.ts` or `use*Transition.ts` when the screen owns shared values, classifiers, or double-buffer state — **by responsibility, not line count**
+
+**Presentational components:** receive data/colors via props; no Redux unless it's a connected container (rare).
+
+---
+
+## Images
+
+```tsx
+// Remote — always CachedImage
+<CachedImage url={story.imageUrl} style={styles.cover} />
+
+// Local asset
+<CachedImage url={require('../../assets/foo.png')} style={styles.icon} />
+```
+
+Do not use raw `<Image source={{ uri }}>` for remote story assets — breaks caching strategy.
+
+---
+
+## Animations
+
+Full patterns: **`animation.mdc`**. Summary:
+
+- Simple opacity/translate: `useSharedValue` + `withTiming` + `useAnimatedStyle`
+- Color transitions tied to story carousel: `SharedValue<StoryStyleUIPalette[]>` + `interpolateColor`
+- List scroll-linked: `useAnimatedScrollHandler` + `Animated.createAnimatedComponent(FlatList)`
+- SVG icon color: `useAnimatedProps` (`AnimatedTabBarButton`)
+- Complex replica/scene transitions: dedicated `use*Transition` hooks — extract **by responsibility**, not line count
+- Durations in `*Constants.ts` — not magic numbers in JSX/hooks
+- Respect reduce motion; see **`animation.mdc`** for `withSpring` vs `withTiming`, performance, double-buffer
+
+---
+
+## Icons
+
+- Generated SVGs: `src/assets/icons/` (via `npm run svgr`)
+- Import as React components: `import { BookIcon } from '../../assets/icons'`
+- Inline one-off SVGs: colocate in screen file only if not reused
+
+---
+
+## Accessibility
+
+- `Pressable` / `TouchableOpacity` for tappable areas
+- `accessibilityRole="button"` and `accessibilityLabel` on non-obvious controls
+- Minimum touch target ~44pt height for primary actions (`MainButton` default height: 48)
+
+---
+
+## Anti-Patterns
+
+```tsx
+// ❌ Hardcoded DS hex
+<View style={{ backgroundColor: '#0A0F1C' }} />
+
+// ❌ Inline palette color in JSX (prefer paletteStyles factory)
+<Text style={{ color: palette.mainTextColor }} />
+
+// ✅ Palette via StyleSheet factory
+<View style={[styles.container, paletteStyles.screen]} />
+```
+
+```tsx
+// ❌ Magic numbers for spacing
+paddingHorizontal: 20,
+
+// ✅ Theme token
+paddingHorizontal: Padding.l,
+```
+
+```tsx
+// ❌ Data fetching in screen useEffect
+useEffect(() => { QuestService.getChapterDetails(...) }, []);
+
+// ✅ Redux thunk
+dispatch(initializeQuest({ userProgress, storyId }));
+```
+
+```tsx
+// ❌ New shared button component in Feature/
+Feature/Home/components/GradientButton.tsx
+
+// ✅ Extend MainButton or add to UIComponents/
+```
+
+```tsx
+// ❌ Raw fontSize/fontWeight on standard UI
+<Text style={{ fontSize: 16, fontWeight: '600' }} />
+
+// ✅ Font scale
+<Text style={Font.subheading.s} />
+```
+
+**Exception:** Quest dialog frame text uses `dialogFrameTypography` + `resolveFrameTextColor` from editor `layout_data` — not `Font.*`.
+
+---
+
+## Related Rules
+
+- **Decomposed screens (UIModel pattern):** `screen-ui.mdc`
+- Animations (Reanimated): `animation.mdc`
+- Quest scene/dialog UI: `quest-feature.mdc`
+- Redux wiring in screens: `redux-store.mdc`
+- Core architecture: `react-native.mdc`
+
+---
+
+# Screen Ui (`screen-ui.mdc`)
+
+# Feature Screen UI — Decomposed Pattern
+
+Reference: `src/Feature/Quest/screens/ChapterStartScreen/`.
+
+Complex screens (multiple UI phases, overlays, loading/error/ready) must **not** hold business logic or Redux in JSX. The screen is a thin `switch` over a ready **UIModel**; orchestration lives in a hook; display rules live in pure mappers.
+
+Simple screens (single layout, 1–2 selectors) may stay flat — see `ui-components.mdc`.
+
+---
+
+## Folder Structure
+
+```
+Feature/<Feature>/screens/<ScreenName>/
+├── <ScreenName>.tsx                     # Container: switch on UIModel.kind, no logic
+├── hooks/
+│   └── use<ScreenName>.ts               # Redux, navigation, side-effects, handlers
+├── models/
+│   └── <screen>UIModel.ts               # Discriminated union + Actions interface
+├── mappers/
+│   ├── <screen>Mapper.ts                # Domain/Redux → UIModel (assembly)
+│   └── resolve<Screen>ViewState.ts      # Pure: which UI phase to show
+├── constants/
+│   └── <screen>Constants.ts             # Copy, magic strings, testIDs
+├── components/
+│   ├── <Screen><Phase>View.tsx          # Presentational view for one phase
+│   └── <Screen><Shared>.tsx             # Shared in-screen layout (backdrop, footer)
+└── __tests__/
+    ├── resolve<Screen>ViewState.test.ts
+    └── <screen>Mapper.test.ts
+```
+
+**Naming conventions:**
+- View components — `View` suffix (`ChapterStartReadyView`)
+- Hook — `use<ScreenName>`
+- UIModel file — `<screen>UIModel.ts`
+- View state resolver — `resolve<ScreenName>ViewState.ts`
+- UIModel mapper — `<screen>Mapper.ts`
+
+---
+
+## Layer Responsibilities
+
+| Layer | File | Does | Does not |
+|-------|------|------|----------|
+| **Screen** | `<ScreenName>.tsx` | `useHook()` → `switch (uiModel.kind)` → `<*View />` | Redux, dispatch, useEffect, business rules |
+| **Container hook** | `hooks/use*.ts` | selectors, dispatch thunks, navigation, local UI state (transient errors), callbacks | JSX, StyleSheet, Domain → UI field mapping |
+| **View state resolver** | `mappers/resolve*.ts` | Pure: which `ViewKind` from Redux flags | I/O, hooks, React |
+| **UIModel mapper** | `mappers/*Mapper.ts` | Pure: assemble `UIModel`, palette subset, nested UI structs | dispatch, navigation |
+| **UIModel** | `models/*UIModel.ts` | Presentation-only types; `as const` discriminant | Domain, DTO, Redux types |
+| **View** | `components/*View.tsx` | Layout from props; palette/chapter/message | Redux, Service, thunks |
+| **Constants** | `constants/*.ts` | User-facing strings, loader steps, testIDs | Logic |
+
+Business rules live in **Service / thunks / pure resolvers**, not in views or the screen container.
+
+---
+
+## UIModel — Discriminated Union
+
+```ts
+// models/<screen>UIModel.ts
+export const MyScreenViewKind = {
+  Loading: 'loading',
+  Error: 'error',
+  Ready: 'ready',
+} as const;
+
+export type MyScreenViewKind =
+  (typeof MyScreenViewKind)[keyof typeof MyScreenViewKind];
+
+export type MyScreenUIModel =
+  | { kind: typeof MyScreenViewKind.Loading; palette: MyScreenPaletteUIModel }
+  | { kind: typeof MyScreenViewKind.Ready; palette: MyScreenPaletteUIModel; data: MyScreenDataUIModel }
+  | { kind: typeof MyScreenViewKind.Error; palette: MyScreenPaletteUIModel; message: string }
+
+/** Actions — separate from UIModel */
+export interface MyScreenActions {
+  onConfirm: () => void;
+  onBack: () => void;
+  onRetry: () => void;
+}
+```
+
+**UIModel rules:**
+- Only fields needed for rendering: strings, numbers, palette subset, nested UI structs.
+- **No** Domain types, Redux state, or navigation.
+- Palette is a **subset** of the shared palette (`Pick<StoryStyleUIPalette, 'mainTextColor' | 'accentColor'>` or a dedicated interface). Mapping palette → subset belongs in `*Mapper.ts`.
+- Discriminant `kind` — `as const` object, **not** `enum`.
+- Actions / callbacks — **separate** interface, not part of the union.
+
+---
+
+## Screen Container
+
+```tsx
+// <ScreenName>.tsx — switch only
+export function MyScreen() {
+  const { uiModel, actions } = useMyScreen();
+
+  switch (uiModel.kind) {
+    case MyScreenViewKind.Loading:
+      return <MyScreenLoadingView palette={uiModel.palette} />;
+    case MyScreenViewKind.Ready:
+      return (
+        <MyScreenReadyView
+          palette={uiModel.palette}
+          data={uiModel.data}
+          onConfirm={actions.onConfirm}
+          onBack={actions.onBack}
+        />
+      );
+    case MyScreenViewKind.Error:
+      return (
+        <MyScreenErrorView
+          palette={uiModel.palette}
+          message={uiModel.message}
+          onRetry={actions.onRetry}
+        />
+      );
+  }
+}
+```
+
+- Named export.
+- No `useAppSelector`, `useEffect`, or `StyleSheet` in the screen file.
+- Switch must be exhaustive — TypeScript must cover every `ViewKind`.
+
+---
+
+## Container Hook
+
+```ts
+export function useMyScreen(): {
+  uiModel: MyScreenUIModel;
+  actions: MyScreenActions;
+} {
+  // 1. Route params and navigation
+  const { someId } = useRoute<MyScreenRouteProp>().params;
+  const navigation = useNavigation();
+
+  // 2. useAppSelector — read Redux state only
+  const isLoading = useAppSelector(selectIsLoading);
+  const data = useAppSelector(selectData);
+  const loadError = useAppSelector(selectLoadError);
+
+  // 3. useEffect — dispatch thunks (init, fetch)
+  // When deps change (e.g. someId) — list them explicitly in the deps array
+  useEffect(() => {
+    dispatch(loadData({ someId }));
+  }, [someId]);
+
+  // 4. useCallback — handlers (navigate, retry, dismiss)
+  const handleConfirm = useCallback(() => {
+    navigation.navigate('NextScreen');
+  }, [navigation]);
+
+  const handleRetry = useCallback(() => {
+    dispatch(loadData({ someId }));
+  }, [someId]);
+
+  // 5. Mapping — single call at the end
+  // useMemo only if the mapper sorts/filters large arrays or builds heavy nested structs.
+  // For a typical pure mapper — not required.
+  const uiModel = mapMyScreenUIModel({ isLoading, data, loadError });
+
+  return {
+    uiModel,
+    actions: {
+      onConfirm: handleConfirm,
+      onBack: navigation.goBack,
+      onRetry: handleRetry,
+    },
+  };
+}
+```
+
+**Hook rules:**
+- Hook **delegates** UI phase selection to `resolve*ViewState`, never computes it inline.
+- Local UI state — transient display state only; do not duplicate Redux domain.
+- `navigate()` — only inside the hook via `useNavigation()`; never pass navigation into views or store it on `actions`.
+- For changing `useEffect` deps — list them explicitly and handle race conditions when needed.
+
+---
+
+## Pure Mappers
+
+### View State Resolver
+Defines phase priority. **If order matters** — test every branch:
+
+```ts
+// mappers/resolveMyScreenViewState.ts
+export interface ResolveMyScreenViewStateParams {
+  isLoading: boolean;
+  hasData: boolean;
+  loadError: string | null;
+}
+
+export function resolveMyScreenViewState(params: ResolveMyScreenViewStateParams): MyScreenViewKind {
+  if (params.isLoading || !params.hasData) return MyScreenViewKind.Loading;
+  if (params.loadError) return MyScreenViewKind.Error;
+  return MyScreenViewKind.Ready;
+}
+```
+
+### UIModel Mapper
+Assembles the union from the resolver result, with explicit fallback branches:
+
+```ts
+// mappers/myScreenMapper.ts
+export function mapMyScreenUIModel(input: MapMyScreenUIModelParams): MyScreenUIModel {
+  const palette = mapPaletteToMyScreen(input.storyStyle ?? null);
+  const kind = resolveMyScreenViewState(input);
+
+  switch (kind) {
+    case MyScreenViewKind.Loading:
+      return { kind, palette };
+
+    case MyScreenViewKind.Error:
+      return { kind, palette, message: input.loadError ?? FALLBACK_ERROR_MESSAGE };
+
+    case MyScreenViewKind.Ready:
+      if (!input.data) {
+        // Fallback: resolver returned Ready but data is missing — safe error
+        return { kind: MyScreenViewKind.Error, palette, message: DATA_NOT_FOUND_MESSAGE };
+      }
+      return { kind, palette, data: mapDataToUIModel(input.data) };
+  }
+}
+```
+
+**Palette subset:**
+```ts
+// Option 1 — Pick from shared palette
+type MyScreenPaletteUIModel = Pick<StoryStyleUIPalette, 'mainTextColor' | 'accentColor' | 'backgroundColor'>;
+
+// Option 2 — dedicated interface (preferred for larger subsets)
+interface MyScreenPaletteUIModel {
+  mainTextColor: string;
+  accentColor: string;
+  backgroundColor: string;
+}
+
+// Mapping — in *Mapper.ts
+function mapPaletteToMyScreen(style: StoryStyle | null): MyScreenPaletteUIModel { … }
+```
+
+---
+
+## Presentational Views
+
+```tsx
+// components/MyScreenReadyView.tsx
+
+interface MyScreenReadyViewProps {
+  palette: MyScreenPaletteUIModel;
+  data: MyScreenDataUIModel;
+  onConfirm: () => void;
+  onBack: () => void;
+  testID?: string;
+}
+
+/** @component */
+export function MyScreenReadyView({ palette, data, onConfirm, onBack, testID }: MyScreenReadyViewProps) {
+  return (
+    <MyScreenBackdrop palette={palette} testID={testID}>
+      <Text style={{ color: palette.mainTextColor }}>{data.title}</Text>
+      <MyScreenFooter
+        palette={palette}
+        primaryLabel={CONFIRM_BUTTON_LABEL}
+        onPrimary={onConfirm}
+        onBack={onBack}
+      />
+    </MyScreenBackdrop>
+  );
+}
+```
+
+**View rules:**
+- Props — UIModel types + callbacks. No Domain types.
+- Shared in-screen layout (`MyScreenBackdrop`, `MyScreenFooter`) — in the screen's `components/`, not global `UIComponents/`.
+- Styling: `Font`, `Margin`/`Padding` from `theme.ts`; colors from `palette` or `DesignSystemColors` — see `ui-components.mdc`.
+- `testID` — via constants or optional prop; do not hardcode strings in JSX.
+- `@component` JSDoc on every view file.
+
+---
+
+## Error Boundaries
+
+Screens with loading/error phases handle **expected** errors via UIModel (`Error` phase).
+
+For **unexpected** runtime throws — place an Error Boundary **above** the screen container, at navigator or root layout level. The screen container is not an Error Boundary.
+
+```tsx
+// Navigator level — not in the screen file itself
+<ErrorBoundary fallback={<GlobalErrorFallback />}>
+  <Stack.Screen name="MyScreen" component={MyScreen} />
+</ErrorBoundary>
+```
+
+---
+
+## Tests
+
+| What to test | File | Priority |
+|--------------|------|----------|
+| Phase order and branches | `resolve*ViewState.test.ts` | **Required** |
+| UIModel assembly, fallbacks, palette mapping | `*Mapper.test.ts` | **Required** |
+| Hook orchestration | separate test if pure tests are insufficient | As needed |
+| Screen container / Views | snapshot or RTL | As needed |
+
+```ts
+// resolve*ViewState.test.ts
+describe('resolveMyScreenViewState', () => {
+  it('returns Loading when isLoading=true regardless of other flags', () => {
+    expect(resolveMyScreenViewState({ isLoading: true, hasData: true, loadError: null }))
+      .toBe(MyScreenViewKind.Loading);
+  });
+
+  it('returns Error when loadError present and not loading', () => {
+    expect(resolveMyScreenViewState({ isLoading: false, hasData: true, loadError: 'Network error' }))
+      .toBe(MyScreenViewKind.Error);
+  });
+
+  it('returns Ready when loaded and no error', () => {
+    expect(resolveMyScreenViewState({ isLoading: false, hasData: true, loadError: null }))
+      .toBe(MyScreenViewKind.Ready);
+  });
+});
+
+// *Mapper.test.ts
+describe('mapMyScreenUIModel', () => {
+  it('falls back to Error when kind=Ready but data is missing', () => {
+    const result = mapMyScreenUIModel({ isLoading: false, hasData: true, loadError: null, data: null, storyStyle: null });
+    expect(result.kind).toBe(MyScreenViewKind.Error);
+  });
+
+  it('maps palette subset correctly', () => {
+    const result = mapMyScreenUIModel({ …validInput });
+    expect(result.palette).toMatchObject({ mainTextColor: expect.any(String) });
+  });
+});
+```
+
+---
+
+## Anti-Patterns
+
+```tsx
+// ❌ Business logic and Redux in screen
+export function MyScreen() {
+  const phase = useAppSelector(s => s.contentUpdate.phase);
+  if (phase === 'downloading') return <Loading />;
+  dispatch(initScreen()); // side-effect in render
+}
+
+// ✅ Hook + UIModel + switch
+const { uiModel, actions } = useMyScreen();
+switch (uiModel.kind) { … }
+```
+
+```tsx
+// ❌ Domain types in view props
+<ReadyView chapter={chapterDomain} story={storyDomain} />
+
+// ✅ UIModel subset
+<ReadyView data={uiModel.data} palette={uiModel.palette} />
+```
+
+```ts
+// ❌ ViewKind computed inline in hook (50 lines of conditions)
+const kind = contentUpdate.phase === 'idle' && !updateNeeded ? 'ready' : …;
+
+// ✅ Delegate to pure resolver
+const kind = resolveMyScreenViewState({ isLoading, hasData, loadError });
+```
+
+```ts
+// ❌ Actions inside UIModel union
+| { kind: 'ready'; onConfirm: () => void }
+
+// ✅ Separate interface
+return { uiModel, actions };
+```
+
+```tsx
+// ❌ Service/Repository called from view
+useEffect(() => { MyService.loadData() }, []);
+
+// ✅ Thunk from container hook
+dispatch(loadData({ someId }));
+```
+
+```ts
+// ❌ Full StoryStyleUIPalette passed to view
+| { kind: 'ready'; palette: StoryStyleUIPalette }
+
+// ✅ Only needed fields — palette subset
+| { kind: 'ready'; palette: MyScreenPaletteUIModel }
+```
+
+```ts
+// ❌ navigation passed to view or stored on actions
+actions: { navigation }
+
+// ✅ navigation used only inside hook
+const handleConfirm = useCallback(() => navigation.navigate('Next'), [navigation]);
+actions: { onConfirm: handleConfirm }
+```
+
+---
+
+## When to Apply
+
+| Screen | Pattern |
+|--------|---------|
+| Multiple phases (loading / error / ready / overlay) | **Decomposed** (this rule) |
+| Complex mapping from multiple Redux slices | **Decomposed** |
+| Simple list / form / single layout / 1–2 selectors | Flat screen — `ui-components.mdc` is enough |
+
+When refactoring a legacy screen: create a `<ScreenName>/` folder and extract hook + UIModel + views incrementally. The screen file stays the route entry point throughout the refactor.
+
+---
+
+## Related Rules
+
+- Theme, Font, palette: `ui-components.mdc`
+- Redux/thunks in hook: `redux-store.mdc`
+- Quest overlays, dialog frames: `quest-feature.mdc`
+- Spec as contract: `specification.mdc`
+- Architecture: `react-native.mdc`
+
+**Reference files:**
+- `src/Feature/Quest/screens/ChapterStartScreen/ChapterStartScreen.tsx`
+- `src/Feature/Quest/screens/ChapterStartScreen/hooks/useChapterStartScreen.ts`
+- `src/Feature/Quest/screens/ChapterStartScreen/models/chapterStartUIModel.ts`
+- `src/Feature/Quest/screens/ChapterStartScreen/mappers/resolveChapterStartViewState.ts`
+
+---
+
+# Redux Store (`redux-store.mdc`)
+
+# Redux Store Conventions
+
+## Module Layout
+
+Each domain under `src/App/store/<domain>/`:
+
+```
+<domain>/
+├── slice.ts       # createSlice + extraReducers
+├── thunks.ts      # createAsyncThunk (or index re-export)
+├── actions.ts     # sync actions exported for thunks/UI
+├── selectors.ts   # memoized selectors
+├── types.ts       # <Domain>State interface
+└── index.ts       # public exports
+```
+
+Register reducer in `src/App/store/helpers/index.ts`.
+
+---
+
+## Slice Responsibilities
+
+**Slice owns state shape and synchronous updates only.**
+
+- Document lifecycle/status in file-level JSDoc (see `quest/slice.ts`)
+- `extraReducers` handle thunk pending/fulfilled/rejected
+- Complex prep runs in thunks **before** dispatching sync actions
+
+```ts
+// See: quest/slice.ts pattern
+/**
+ * Thunk calls prepareReplicaCharacterState BEFORE advanceReplica.
+ * Reducer writes preparedReplicaCharacter[replicaUuid] — UI reads by current replica uuid.
+ */
+extraReducers: (builder) => {
+  builder
+    .addCase(initializeQuest.pending, (state) => { state.status = 'loading'; })
+    .addCase(initializeQuest.fulfilled, (state, action) => { /* apply payload */ });
+};
+```
+
+### Quest status values
+
+`idle` | `loading` | `playing` | `finished` | `error`
+
+---
+
+## Thunk Pattern
+
+Thunks are the orchestration layer: Services, prefetch, audio, progress updates.
+
+```ts
+export const initializeQuest = createAsyncThunk<
+  PayloadType,
+  ArgType,
+  { state: RootState; dispatch: AppDispatch }
+>('quest/initialize', async (args, { rejectWithValue, dispatch, getState }) => {
+  try {
+    const chapter = await QuestService.getChapterDetails(args.chapterId, false, args.storyId);
+    // side effects: prefetch, audio, prepareReplicaCharacterState
+    dispatch(setCharacterLayers(...));
+    return { chapter, scene, dialogList, ... };
+  } catch (error) {
+    return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
+  }
+});
+```
+
+**Rules:**
+- Import Services from `src/Service/`, not Repositories
+- Use typed `{ state: RootState; dispatch: AppDispatch }` third generic
+- Dispatch sync actions from `./actions` for incremental updates mid-thunk
+- Keep Domain in store; map to UI models via `domainToUIMapper` when components need UI shapes
+
+---
+
+## Selectors
+
+- Colocate in `selectors.ts`; use `createSelector` for derived data
+- UI reads prepared state (e.g. `preparedReplicaCharacter[currentReplica.uuid]`), not raw intermediate layers
+- Export narrow selectors; avoid passing entire `RootState` slices to components
+
+---
+
+## Progress Source of Truth
+
+`storyProgress` slice is the single source of truth for player progress (stats, variants, current chapter/scene/dialog). Quest thunks read via `selectPlayerStats`, `selectCompletedVariants`, `selectActiveStoryId`.
+
+---
+
+## Anti-Patterns
+
+```ts
+// ❌ Fetch inside reducer
+reducers: {
+  loadChapter(state) {
+    fetch(...); // never
+  }
+}
+
+// ❌ Import Feature UI into slice/thunk (except pure utils like prefetchCharacterAssets)
+import { DialogFrameView } from '../../../Feature/Quest/components/DialogFrameView';
+
+// ✅ Import pure utils and Services
+import { prefetchChapterCharacterAssets } from '../../../Feature/Quest/utils/prefetchCharacterAssets';
+```
+
+---
+
+## Testing
+
+Pure selector/utility logic: unit tests alongside domain utils. Slice/thunk integration: test reducer with action payloads, mock Services at thunk boundary.
+
+---
+
+# Service Layer (`service-layer.mdc`)
+
+# Service Layer Conventions
+
+## Layer Responsibilities
+
+| Class | File suffix | Does | Does NOT |
+|-------|-------------|------|----------|
+| **Service** | `*Service.ts` | Facade for thunks/UI; cache-then-network orchestration | Direct Supabase calls |
+| **Manager** | `*Manager.ts` | AsyncStorage cache, local files, asset validation | HTTP requests |
+| **Repository** | `*Repository.ts` | Supabase/API; returns DTO | Business rules, UI mapping |
+| **Mapper** | `*Mapper.ts` | DTO → Domain (stateless) | Side effects |
+
+See also: `Спецификация/Техническая документация.md`
+
+---
+
+## Service Template
+
+```ts
+/**
+ * @file QuestService.ts
+ * @description Facade for quest gameplay. Single entry point for Redux thunks.
+ */
+class QuestService {
+  private repository: QuestRepository;
+  private manager: QuestManager;
+
+  constructor() {
+    const domainMapper = new StoryDomainMapper();
+    this.repository = new QuestRepository();
+    this.manager = new QuestManager(domainMapper);
+  }
+
+  async getChapterDetails(
+    chapterId: string,
+    forceUpdate = false,
+    storyId?: string,
+    onProgress?: (loaded: number, total: number) => void,
+  ): Promise<ChapterDomain | null> {
+    console.log({ event: 'QuestService.getChapterDetails', chapterId, forceUpdate });
+
+    if (!forceUpdate && storyId) {
+      const cached = await this.manager.getChapter(storyId, chapterId);
+      if (cached) {
+        onProgress?.(1, 1);
+        return cached;
+      }
+    }
+
+    const dto = await this.repository.getChapterDetails(chapterId, onProgress);
+    if (!dto) return null;
+
+    const domain = this.manager.saveChapter(dto); // persist + return Domain
+    return domain;
+  }
+}
+
+export default new QuestService(); // singleton instance
+```
+
+**Cache-first strategy:** try Manager → fallback Repository → persist via Manager → return Domain.
+
+---
+
+## Data Flow
+
+```
+Repository (DTO) → Mapper → Domain → Manager (cache) → Service → Thunk → Slice
+                                                      ↘ domainToUIMapper → UI models
+```
+
+### Type boundaries
+
+- `src/Service/data/DTO/` — wire types matching Supabase columns
+- `src/Service/data/Domain/` — normalized business objects for store/services
+- `src/Common/models/` — UI-facing shapes used by Feature components
+
+Never leak DTO fields into Redux state or React props.
+
+---
+
+## Logging
+
+Every public Service method logs entry with structured payload:
+
+```ts
+console.log({ event: 'QuestService.methodName', chapterId, forceUpdate });
+```
+
+Log cache hits: `{ event: 'QuestService.getChapterDetails.fromCache', chapterId }`.
+
+---
+
+## Progress Callbacks
+
+Chapter downloads thread `onProgress?: (loaded: number, total: number) => void` from Service → Repository for UI progress bars.
+
+---
+
+## Singleton vs Class
+
+Existing services export singleton instances (`export default new QuestService()`). Match this pattern for new services — don't introduce DI frameworks.
+
+---
+
+## Anti-Patterns
+
+```ts
+// ❌ Repository returning Domain
+async getChapter(): Promise<ChapterDomain> {
+  const dto = await supabase...;
+  return mapper.toDomain(dto); // mapping belongs in Manager/Service
+}
+
+// ❌ Service skipping Manager on write
+async saveProgress(data) {
+  await this.repository.save(data); // must also update local cache
+}
+
+// ❌ UI importing Repository
+import { QuestRepository } from '../../Service/Quest/QuestRepository';
+```
+
+---
+
+## Adding a New Service
+
+1. Create `*Repository.ts` — Supabase queries, return DTO
+2. Create/update `*Manager.ts` — cache keys, AsyncStorage, file paths
+3. Create `*Service.ts` — compose Manager + Repository, return Domain
+4. Add Domain types + mapper methods in `StoryDomainMapper` or dedicated mapper
+5. Expose via thunk in `src/App/store/` — never from UI directly
+
+---
+
+# Quest Feature (`quest-feature.mdc`)
+
+# Quest Feature — UI Patterns
+
+## Screen Composition
+
+**`SceneScreen`** — decomposed per `screen-ui.mdc` (`screens/SceneScreen/`):
+- `useSceneScreen` — selectors, thunks, transition orchestration
+- `mapSceneUIModel` — presentation model (single gameplay phase)
+- `ScenePlayingView` — composes components below
+- **No** loading/completing UI — preflight on `ChapterStartScreen`; chapter end → `QuestScreen` → `ChapterEndingScreen`
+
+Orchestrates:
+- `SceneBackground` — layered backgrounds, crossfade
+- `CharacterDisplay` — sprite layers, scene transitions
+- `DialogView` → `DialogFrameView` or `DialogBuiltinFrameFallback`
+- `QuestReplicaTransitionProvider` — transitionOut → transitionIn; locks interaction
+
+UI reads Redux via selectors in hook; dispatches thunks (`handleNextReplica`, `handleSelectVariant`).
+
+---
+
+## Dialog Frame Rendering
+
+**When frame exists in store:** `DialogFrameView` with resolved `DialogFrameDomain`.
+
+**Fallback:** `DialogBuiltinFrameFallback` when no DB frames.
+
+Key helpers (do not duplicate logic in components):
+- `resolveDialogFrame` — pick frame for replica
+- `getDialogFrameContainerStyle` — screen positioning from `layout_data`
+- `getPreparedDialogFrameSvg` — SVG string prep
+- `classifyDialogFrameTransition` / `buildDialogFrameSnapshot` — transition type
+- `useDialogFrameContentTransition` — double-buffer fade, height animation
+
+```tsx
+// Pattern: displayedReplica lags behind current replica during orchestrated fade-out
+const { displayedFrame, displayedReplica, boxLayoutAnimatedStyle, contentFadeAnimatedStyle, onContentLayout } =
+  useDialogFrameContentTransition({ frame, replica });
+```
+
+Layer order (bottom → top): shell → root SVG → author (zIndex 3) → replica (zIndex 2) → variants.
+
+See: `Спецификация/Логика геймлея/Сущности/РамкаДиалога.md`
+
+---
+
+## Character Display
+
+- Geometry: `characterSceneGeometry.ts` — height, anchor, cover layout
+- Transitions: `characterSceneTransition.ts` + `useCharacterSceneTransition.ts`
+- Layout constants: `constants/characterLayout.ts`
+- Prefetch before show: `prefetchCharacterAssets.ts` (called from thunks, not components)
+
+Read prepared character state from Redux (`preparedReplicaCharacter[replicaUuid]`), not raw `characterLayers` directly in display components.
+
+---
+
+## Animations (Reanimated)
+
+See **`animation.mdc`** for full patterns. Quest-specific entry points:
+
+- Dialog frame: `useDialogFrameContentTransition` + `dialogFrameTransition.ts` (autonomous) / orchestrator (scene)
+- Character sprite: `useCharacterSceneTransition` + `characterSceneTransition.ts`
+- Background/camera: `useBackgroundCrossfade`, `useSceneCameraPan`
+- Scene transition orchestrator: `QuestReplicaTransitionContext` + `questReplicaTransitionOrchestrator.ts`
+- Scene entry snap: `cameraPanAnimationEnabled` in provider
+- Constants: `dialogFrameAnimationConstants.ts`, `sceneBackground/constants.ts`
+- Interrupt: `transitionEpochRef` in hooks; input blocked via `isInteractionLocked` on scene
+
+---
+
+## Background & Camera
+
+- `useBackgroundCrossfade` — dual-layer background opacity
+- `useSceneCameraPan` — camera X from `effectiveCameraXByIndex[replicaIndex]`
+- `sceneCoverLayout.ts` — cover-fit calculations
+
+Camera X is precomputed in slice (`syncEffectiveCameraXByIndex`) — UI reads O(1) by index.
+
+---
+
+## Styling in Quest
+
+```tsx
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+});
+
+// Safe area for dialog positioning
+const insets = useSafeAreaInsets();
+
+// Frame text colors — use resolvers, not inline hex
+const textColor = resolveFrameTextColor(frame.typography?.color, FALLBACK);
+```
+
+---
+
+## File Organization
+
+```
+Feature/Quest/
+├── screens/
+│   ├── SceneScreen/     # useSceneScreen + ScenePlayingView (screen-ui.mdc)
+│   ├── ChapterStartScreen/
+│   └── …
+├── components/        # Presentational components
+├── dialogFrame/       # Frame logic, hooks, SVG, transitions
+├── character/         # Character transition hooks
+├── hooks/             # Scene-level hooks (background, camera)
+├── utils/             # Pure functions + __tests__
+├── constants/         # Layout constants
+└── context/           # QuestReplicaTransitionContext
+```
+
+Pure logic → `utils/` or `dialogFrame/` with unit tests in `__tests__/`.
+
+---
+
+## Anti-Patterns
+
+```tsx
+// ❌ Fetch chapter/dialog data in component useEffect
+useEffect(() => { QuestService.getChapterDetails(...) }, []);
+
+// ❌ Mutate layout_data or frame domain objects
+frame.layout_data.position.y = 100;
+
+// ❌ Skip transition hook and swap replica text immediately on prop change
+<Text>{replica.text}</Text> // use displayedReplica from transition hook
+
+// ✅ Prefetch and state prep in thunk; UI renders prepared selectors
+```
+
+---
+
+## Testing
+
+Co-locate pure logic tests:
+- `utils/__tests__/characterSceneGeometry.test.ts`
+- `utils/__tests__/characterSceneTransition.test.ts`
+- `utils/__tests__/questSceneUtils.test.ts`
+- `context/__tests__/questReplicaTransitionOrchestrator.test.ts`
+
+Test geometry, sticky camera, frame transition classification — not snapshot entire components unless necessary.
+
+---
+
+# Monetization Ios (`monetization-ios.mdc`)
+
+# Monetization (iOS)
+
+**Spec (единый):** `Спецификация/Монетизация/Paywall.md` — BR, entitlements §7, gates §4–6, аналитика §8.
+
+**Нет legacy:** новое приложение; не добавлять shims, deprecated-ветки, «старые» события/копирайт. См. `react-native.mdc` → No Legacy.
+
+**Именование в коде:** только `MonetizationScenarioId` и человекочитаемые имена (`subscriptionPromoMiniDismissed`, `resolveHomeSubscriptionPromoTrigger`). Не использовать аббревиатуры вроде `bn01`, `pw01`, `T1`/`T2` в идентификаторах.
+
+---
+
+## Идентификаторы (`scenario_id`)
+
+| `scenario_id` | Gate / экран |
+|---------------|----------------|
+| `premium_dialog_branch` | скрытый путь в диалоге |
+| `wardrobe_premium_outfit` | premium-образ в гардеробе |
+| `offline_chapter_download` | **только `__DEV__` превью** — gate на скачивание снят |
+| `offline_read_blocked` | offline **чтение** без entitlement (info, без StoreKit) |
+| `home_offline_promo` | deferred sheet после offline info / tap на mini-баннер |
+| `early_access_chapter` | «Читать» при early access без Pass |
+| `my_purchases` | Настройки → «Мои покупки» |
+| `subscription_hub` | «Моя подписка» (sale / active) |
+
+**Trial switch:** всегда в footer, **OFF по умолчанию**; оффер не предвыбирается — CTA disabled до выбора. ON + annual → `limerence_pass_trial_499`; OFF + annual → `limerence_pass_annual_3990`.
+
+`release_locked` → **paywall не показываем** (`resolveMonetizationScenario` → `null`).
+
+**Скачивание главы** — без monetization gate. **Офлайн-чтение** — gate через `offline_read`.
+
+---
+
+## Слои
+
+### Service (`src/Service/Monetization/`)
+
+| Модуль | Роль |
+|--------|------|
+| `EntitlementResolver` | `canAccess(resource)` — единый gate |
+| `resolveMonetizationScenario` | `AccessDenialReason` + `isOnline` → `scenario_id` |
+| `PaywallPresenter` | config + `paywall_shown`; `checkAndPresent` / `buildState` |
+| `PaywallConfigService` | локальный fallback: `offer_layout`, offers, highlight rotation |
+| `paywallFigmaCopy` | **UI-тексты из Figma** |
+| `StoreProductCatalogService` | цены из Store → `storeProducts` |
+| `HomeSubscriptionPromoTrigger` | когда показывать mini-баннер на Home |
+| `BillingSegmentService` | RU segment для promo первого визита |
+
+### Redux (`src/App/store/monetization/`)
+
+Thunks: `requestPaywallThunk`, `purchaseOfferThunk`, `restorePurchasesThunk`, `setOfflineReminderThunk`, `openSubscriptionPromoSheetThunk`, `dismissSubscriptionPromoMiniThunk`, `hydrateMonetizationThunk`, `loadStoreCatalogThunk`.
+
+Ключевое состояние: `entitlements`, `activePaywall`, `exposureIndexByScenario`, `storeProducts`, `offlineReadReminder`, `subscriptionPromoMiniDismissed`, `isOnline`, `trialUsed`.
+
+### UI (`src/Feature/Monetization/`)
+
+| Компонент | Роль |
+|-----------|------|
+| `PaywallHost` | root host; `info` → `PaywallOfflineInfoSheet`, иначе `PaywallSheet` |
+| `SubscriptionPromoMiniStrip` | mini-баннер «Читать без интернета» на Home |
+| `PaywallDebugMenu` | `__DEV__` превью в Settings |
+
+**Entry point для gates:** `useEntitlementGate()` → `requestPaywallThunk`.
+
+---
+
+## Entitlement priority
+
+`full_story` > `chapter_pass` (глава) > `subscription` (Story Pass) > free read.
+
+---
+
+## Offline funnel
+
+1. Offline read без Pass → `offline_read_blocked` (info) → «Напомнить позже» → `offlineReadReminder.pending`
+2. Сеть вернулась → `SubscriptionPromoMiniStrip` → tap → `home_offline_promo` sheet
+3. Скачивание главы — **без** paywall; читать офлайн — с Pass (Chapter Pass / Полный доступ / Limerence Plus)
+
+---
+
+## Anti-patterns
+
+```ts
+// ❌ Аббревиатуры в коде
+const bn01Trigger = resolveBn01Trigger(...)
+
+// ❌ Хардкод цены
+priceLabel: '399 ₽'
+
+// ❌ UI → Supabase напрямую
+await supabase.from('user_entitlements').select()
+
+// ✅ Gate → thunk → Service
+const { requestAccess } = useEntitlementGate()
+await requestAccess({ resource, context, onSuccess })
+```

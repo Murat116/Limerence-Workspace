@@ -1,0 +1,2 @@
+-- env column enforced in insert_analytics_events_batch (20260612100002).
+-- No additional DDL.

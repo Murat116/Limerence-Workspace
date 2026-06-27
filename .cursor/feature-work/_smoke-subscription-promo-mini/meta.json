@@ -1,0 +1,16 @@
+{
+  "slug": "subscription-promo-mini",
+  "title": "Mini-баннер подписки на главной",
+  "phase": "reconcile",
+  "planStatus": "draft",
+  "approvedAt": null,
+  "planApprovedAt": null,
+  "createdAt": "2026-06-24T12:00:00Z",
+  "updatedAt": "2026-06-24T12:00:00Z",
+  "notionPageUrl": null,
+  "figmaUrl": "https://www.figma.com/design/l9ZhjUKBTAQNe3Vc5GHaul/Limerence-Design-Template--Copy-",
+  "figmaNodeId": null,
+  "builderPath": "/Users/anmin/iosProject/limerenceProject/LimerenceBilder",
+  "rnPath": "/Users/anmin/iosProject/limerenceProject/LemereceRN",
+  "_note": "Smoke-test example — не активная задача, демонстрация формата артефактов"
+}

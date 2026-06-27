@@ -1,0 +1,15 @@
+{
+  "slug": "YOUR-FEATURE-SLUG",
+  "title": "Название задачи",
+  "phase": "brief",
+  "planStatus": "draft",
+  "approvedAt": null,
+  "planApprovedAt": null,
+  "createdAt": null,
+  "updatedAt": null,
+  "notionPageUrl": null,
+  "figmaUrl": null,
+  "figmaNodeId": null,
+  "builderPath": "/Users/anmin/iosProject/limerenceProject/LimerenceBilder",
+  "rnPath": "/Users/anmin/iosProject/limerenceProject/LemereceRN"
+}

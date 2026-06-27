@@ -1,0 +1,74 @@
+---
+description: Spec workflow, comments preservation, @see links — applies across mobile and web
+alwaysApply: true
+---
+
+# Common Rules — Limerence Workspace
+
+## Comments & Documentation — Preserve, Don't Delete
+
+When editing code, **preserving existing documentation has higher priority** than «cleaning up» comments. Removing a comment without explicit user request is a regression.
+
+### Never Remove (Unless Behavior Was Deleted)
+
+| Kind | Example |
+|------|---------|
+| File-level JSDoc | `@file`, `@description`, `@component` |
+| Spec links | `@see Спецификация/...` or `@see docs/...` |
+| Field / prop docs | `/** Рамка после resolveDialogFrame */` |
+| «Why» inline comments | timing, race, layout jump, fallback, guard reason |
+| `eslint-disable` / `eslint-disable-next-line` | only if the lint rule still applies |
+
+### Refactoring — Migrate, Don't Drop
+
+When replacing a block (rename, extract, move):
+
+1. Re-attach field JSDoc to the new symbol
+2. Move `@see` links to the new file if logic moved
+3. Update wording if behavior changed; do not silently delete
+
+### What to Add (New Code Only)
+
+- Gameplay / product logic → spec in `docs/specs/` or `docs/gameplay/` + `@see` in JSDoc
+- Non-obvious implementation → short «why» comment; link to spec, don't paste spec prose
+
+---
+
+## Спецификация — Implementation Workflow
+
+**Source of truth:** `docs/specs/` (mirror of `mobile/Спецификация/`). Code must match spec; spec must reflect intentional code changes.
+
+**Contract for deletion:** anything not documented in specs is candidate for removal.
+
+### Spec Before Code (Mandatory for Gameplay)
+
+1. **Identify** entity doc (`Диалог.md`, `Сцена.md`, …) in `docs/specs/` or `docs/gameplay/`
+2. **Describe** behavior, state transitions, edge cases
+3. **Implement** with `@see docs/specs/...` or `@see Спецификация/...` (symlink)
+4. **Remove** code paths the updated spec no longer mentions
+
+**Same task:** spec update + code change together.
+
+### Entity Index
+
+| Entity | Spec path |
+|--------|-----------|
+| Dialog | `docs/specs/Логика геймлея/Сущности/Диалог.md` |
+| Dialog frame | `docs/specs/Логика геймлея/Сущности/РамкаДиалога.md` |
+| Scene | `docs/specs/Логика геймплея/Сущности/Сцена.md` |
+| Character | `docs/specs/Логика геймплея/Сущности/Персонаж.md` |
+| Chapter | `docs/specs/Логика геймплея/Сущности/Глава.md` |
+| Gameplay overview | `docs/specs/Логика геймплея/Логика геймплея.md` |
+| Tech architecture | `docs/specs/Техническая документация.md` |
+| Monetization BR | `docs/product/monetization/Paywall.md` |
+| Monetization domain | `docs/monetization/` |
+
+### Spec globs
+
+This rule also applies when editing: `docs/**/*.md`, `mobile/Спецификация/**/*.md`
+
+### Anti-Patterns
+
+- Gameplay code without spec update
+- Keeping dead branches when spec no longer mentions them
+- `@deprecated` wrappers instead of deleting obsolete paths
