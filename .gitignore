@@ -2,3 +2,4 @@ mobile/
 web/
 .DS_Store
 node_modules/
+.obsidian/
