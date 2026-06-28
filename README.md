@@ -28,6 +28,28 @@ Limerence-Workspace/
 2. **Открывай `Limerence-Workspace` как root в Cursor** — rules и skills подхватятся автоматически.
 3. `mobile/` и `web/` — независимые git-репозитории со своими remotes; umbrella их не трекает.
 
+## Запуск
+
+Из корня workspace:
+
+```bash
+make install      # npm install в mobile и web/editor-app
+make pod-install  # CocoaPods в mobile/ios
+make install-ios  # npm install + pod install
+
+# Mobile (React Native)
+make start        # Metro
+make ios          # iOS Simulator
+make android      # Android emulator
+
+# Web (Vite editor)
+make web          # alias для web-dev
+make web-dev
+make web-build
+```
+
+`make help` — полный список. Из `mobile/` команды проксируются в корневой Makefile.
+
 ## Области задач
 
 | Область | Пути |

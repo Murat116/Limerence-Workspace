@@ -67,7 +67,9 @@
 
 ### Ранний доступ (Q-09)
 
-- Окно: `now >= releaseDate - subscriberEarlyAccessDays`
+- **Фиксированно 3 дня** до `release_date` для Story Pass, Полного доступа и Chapter Pass на главу
+- Окно: `now >= releaseDate - 3` и `now < releaseDate`
+- Авторы **не настраивают** длительность; платформа использует фиксированные **3 дня**
 - С Pass — читать **до** `releaseDate`
 - После `releaseDate` — **все** читают бесплатно; paywall только на скрытые пути внутри главы
 

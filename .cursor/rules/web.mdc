@@ -66,7 +66,7 @@ Source of truth: `docs/monetization/`. Detailed docs: `docs/web/`.
 - **SKU:** Story Pass (platform sub), Полный доступ (`full_story`), Chapter Pass only
 - **No per-variant IAP** — premium choices via sub or Pass; always offer free alternative variant
 - Authors pick **price tier** from `iap_price_tiers`, never arbitrary price or manual product id
-- **Free read by default** — `requires_pass_to_read` blocks reading without Pass
+- **Free read by default** — текст истории/глав после релиза бесплатен; Pass — premium-контент
 
 ### Entitlement priority
 
@@ -74,8 +74,8 @@ Source of truth: `docs/monetization/`. Detailed docs: `docs/web/`.
 
 ### DB fields
 
-- `story_monetization`: `full_story_tier_key`, `requires_pass_to_read`
-- `chapter_monetization`: `chapter_pass_tier_key`, `requires_pass_to_read`, `subscriber_early_access_days`
+- `story_monetization`: `full_story_tier_key`
+- `chapter_monetization`: `chapter_pass_tier_key`
 - `Variant`: `is_premium` only in UI (no per-choice tier)
 
 ### Validation (AnalysisService)
@@ -88,7 +88,7 @@ Source of truth: `docs/monetization/`. Detailed docs: `docs/web/`.
 - Story settings route: `/story/:id/settings/monetization`
 - Tier dropdowns from `MonetizationService.fetchTiers(sku_type)`
 - Do not enable free-form price inputs
-- Chapter release: `chapterRelease.ts` + `subscriber_early_access_days`
+- Chapter release: `chapterRelease.ts` + фиксированные 3 дня (`SUBSCRIBER_EARLY_ACCESS_DAYS`)
 
 ## Constructor Docs
 

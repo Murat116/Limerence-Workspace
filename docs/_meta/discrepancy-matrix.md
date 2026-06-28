@@ -13,6 +13,7 @@
 | Paywall UX details | paywall.md refs Paywall-UI-UX.md | `PAYWALLS.md` | **Resolved** → `docs/specs/monetization/paywall-ux.md` + `PAYWALLS.md` |
 | Supabase location | paywall.md §2: `limerenceProject/Supabase/` | Umbrella: `supabase/` at workspace root | **Resolved** — canonical `Limerence-Workspace/supabase/` |
 | Constructor monetization | `CONSTRUCTOR_IMPL_PLAN.md` | `web.mdc` rules | **Aligned** — tier from `iap_price_tiers`, no free-form prices |
+| `requires_pass_to_read` | Removed — reading always free (Q-22) | **Resolved** — column dropped; Pass unlocks premium only |
 | Spec/code gaps | paywall.md C-01…C-08 | mobile code | **Track in implementation** — not doc conflict |
 
 ## Open implementation gaps (not doc conflicts)

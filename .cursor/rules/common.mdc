@@ -35,6 +35,58 @@ Preserving existing documentation has **higher priority** than cleanup.
 
 When refactoring — **migrate** comments to the new symbol/file, don't drop them.
 
+## Symbol documentation — required
+
+Every **exported** symbol and every **module-level** binding must have a JSDoc description (one line minimum).
+
+**Human-readable:** пиши для человека, который впервые открывает файл — полными фразами, простым языком. Объясняй **зачем** символ существует и **как** используется, а не пересказывай имя типа или сигнатуру.
+
+| Do | Don't |
+|----|-------|
+| «Настройки монетизации истории с сервера — какие tier keys показывать в paywall» | «RPC response DTO config» |
+| «Общий репозиторий: entitlements, purchase intents, вызовы Supabase RPC» | «Shared repo entitlements intents RPC» |
+| «null — автор не включил покупку всей истории» | «null = not configured» |
+
+Язык: **русский** для domain/бизнес-смысла; `@file` / `@see` — как в соседних файлах модуля. Идентификаторы кода (`tierKey`, RPC-имена) — в backticks внутри текста.
+
+| Symbol | Required docs |
+|--------|----------------|
+| **Class** | Зачем класс; публичные методы — что делают, когда из имени неочевидно |
+| **Function / method** | Что делает и в каком flow; `@param` / `@returns` — если сигнатуры мало |
+| **Type / interface / model** | Что означает в продукте, откуда данные; неочевидные поля — отдельный JSDoc |
+| **Const / global / singleton export** | Что хранит, кто читает, живёт ли кэш / singleton на весь app |
+| **File** (non-trivial modules) | `@file` + `@description`; `@see docs/...` при связи со spec |
+
+**Non-exported** symbols: JSDoc when purpose, constraints, or side effects are not obvious from the name.
+
+**Refactor rule:** touching a symbol without docs → add docs in the same change. Never strip docs «for cleanup».
+
+```ts
+// ❌ Нет описания
+export type StoryMonetizationConfigDTO = { storyId: string };
+
+// ❌ Телеграф — не для человека
+/** RPC get_player_monetization_config DTO tier keys paywall */
+
+// ✅ Человекочитаемо + ссылка на spec
+/**
+ * Настройки монетизации истории с сервера: tier keys для paywall и early access по главам.
+ * Только released chapters. Кэшируется в MonetizationConfigService.
+ * @see docs/monetization/STORE_CATALOG.md
+ */
+export type StoryMonetizationConfigDTO = {
+  /** Ключ ценовой ступени «полный доступ»; null — автор не продаёт историю целиком. */
+  fullStoryTierKey: string | null;
+};
+
+// ❌ Module singleton без описания
+export const monetizationRepository = new MonetizationRepository();
+
+// ✅
+/** Единый доступ к Supabase monetization: entitlements, intents, complete_purchase. */
+export const monetizationRepository = new MonetizationRepository();
+```
+
 ## Spec before code
 
 **Source of truth:** `docs/specs/` and `docs/monetization/`. See `documentation.mdc` for layers and paths.

@@ -32,7 +32,6 @@ Domain reference for entitlement checks across mobile, web, and Supabase.
 | `wardrobe_premium` | full_story or subscription only |
 | `early_access` | full_story / chapter_pass / subscription for chapter |
 | `offline_read` | full_story / chapter_pass / subscription |
-| `requires_pass_to_read` | Pass required to read at all (constructor flag) |
 
 ## DB tables (supabase)
 

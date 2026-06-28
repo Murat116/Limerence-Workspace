@@ -516,9 +516,9 @@ executeAdvancePlan:
 
 ```
 updateLocalProgress (variants + stats optimistic)
-→ updateProgressWithVariant (server)
-→ updatePlayerStats (if statsChanges)
-→ advanceQuest({ trigger: 'afterVariant' })  // не tap / не next replica в том же list!
+→ analytics
+→ advanceQuest({ trigger: 'afterVariant' })
+→ persist variant/stats (background, progressSyncQueue on failure)
 ```
 
 ### 4.4–4.5. (удалено)

@@ -6,8 +6,8 @@
 
 **Migration:** `supabase/migrations/20260628100000_monetization_access_model.sql`
 
-- `story_monetization`: `full_story_tier_key`, `requires_pass_to_read` (no `enabled`, `free_chapters_count`)
-- `chapter_monetization`: `chapter_pass_tier_key`, `requires_pass_to_read`, `subscriber_early_access_days` (no `is_free`)
+- `story_monetization`: `full_story_tier_key` (no `enabled`, `free_chapters_count`)
+- `chapter_monetization`: `chapter_pass_tier_key` (no `is_free`)
 - `monetization_sku_type`: `full_story` (was `story_pass`)
 
 ## Phase 2 — Types & mappers ✅
@@ -29,14 +29,14 @@ Tabs: general, frames, colors, monetization, analytics. Gear icon in ProjectTree
 
 ### Monetization tab
 
-- Help block (Story Pass, Полный доступ, Chapter Pass, premium choices, fully-paid mode)
+- Help block (Story Pass, Полный доступ, Chapter Pass, premium choices; текст истории/глав бесплатен после релиза)
 - `full_story` tier dropdown (optional)
-- `requiresPassToRead` checkbox at story level
+- Per-chapter `chapter_pass` tier dropdown
 
 ### ChapterInspector
 
-- Always visible monetization section
-- `chapter_pass_tier_key`, `requiresPassToRead`, `subscriber_early_access_days`
+- Release flag + `release_date` (единственный gate доступности текста главы)
+- Подсказка: Pass/подписка — ранний доступ и premium, не блокировка текста
 
 ### VariantsEditor
 

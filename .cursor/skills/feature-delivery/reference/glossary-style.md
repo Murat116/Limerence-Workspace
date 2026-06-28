@@ -11,7 +11,7 @@
 |---------------|-----------|-----------|
 | `scenario_id: home_offline_promo` | Окно покупки при тапе на баннер «читать офлайн» на главной | `PaywallPresenter`, monetization slice |
 | `EntitlementResolver` | Проверка: может ли пользователь открыть главу/образ/диалог | `src/Service/Monetization/` |
-| `subscriber_early_access_days` | Сколько дней подписчик читает главу раньше остальных | БД, Builder, chapter release |
+| `SUBSCRIBER_EARLY_ACCESS_DAYS` | Ранний доступ до `release_date` — 3 дня, платформа | mobile, Builder preview |
 ```
 
 ## Правила
