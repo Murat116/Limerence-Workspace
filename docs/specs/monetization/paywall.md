@@ -129,7 +129,9 @@ limerenceProject/
 | **PW-11**  | Offline **чтение** главы без entitlement | Sheet (info) | —³                   | Да        |
 | **PW-11b** | Онлайн после PW-11 (deferred)            | Sheet        | Гибрид²              | Да        |
 | **PW-07**  | «Читать» при `early_access` без Pass     | Modal        | Гибрид²              | Да        |
-| **PW-08**  | Настройки → покупки                      | Push         | —                    | Back      |
+| **PW-08**  | Настройки → покупки / restore              | Push¹ / action | —                    | Back / —  |
+
+¹ PW-08: hub-строки «Моя подписка» / «Мои покупки» → push на `MySubscriptionScreen` / `MyPurchasesScreen` (legacy UI, без редизайна). «Восстановить покупки» — action на hub (idle / loading / success / error).
 
 
 ¹ PW-02: без Chapter Pass — только блок подписки + «Купить навсегда».  
@@ -179,8 +181,10 @@ limerenceProject/
 
 ### PW-08 — Настройки
 
-- Store restore + server merge
-- Управление подпиской → App Store / Play settings
+- **Hub** (вкладка «Настройки»): строки «Моя подписка» / «Мои покупки» с chevron → **push** на существующие экраны (`MySubscriptionScreen`, `MyPurchasesScreen`); UI этих экранов в v1 **не редизайним**
+- **Restore:** строка «Восстановить покупки» на hub — action без перехода; Store restore + server merge; состояния idle / loading / success / error
+- Управление подпиской в Store → из `MySubscriptionScreen` или системные настройки OS
+- @see [settings.md](../mobile/settings.md)
 
 ### Снятые
 

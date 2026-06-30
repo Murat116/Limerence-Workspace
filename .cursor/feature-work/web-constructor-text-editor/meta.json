@@ -1,0 +1,15 @@
+{
+  "slug": "web-constructor-text-editor",
+  "title": "Текстовый режим редактирования истории в веб-конструкторе",
+  "phase": "review",
+  "planStatus": "approved",
+  "approvedAt": "2026-06-29T14:00:00Z",
+  "planApprovedAt": "2026-06-29T20:00:00Z",
+  "createdAt": "2026-06-29T00:00:00Z",
+  "updatedAt": "2026-06-29T15:35:00Z",
+  "notionPageUrl": null,
+  "figmaUrl": null,
+  "figmaNodeId": null,
+  "builderPath": "Limerence-Workspace/web",
+  "rnPath": "Limerence-Workspace/mobile"
+}

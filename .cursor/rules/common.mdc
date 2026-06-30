@@ -87,6 +87,34 @@ export const monetizationRepository = new MonetizationRepository();
 export const monetizationRepository = new MonetizationRepository();
 ```
 
+## Commit messages — human-readable
+
+Когда пользователь просит commit (или skill `multi-repo-commit-push`): сообщение должно читаться **как короткая заметка для коллеги**, не как slug или changelog для машины.
+
+**Формат:** conventional prefix (`feat:`, `docs(monetization):`, …) + **пустая строка** + 1–2 полных предложения. HEREDOC обязателен.
+
+**Human-readable:** полные фразы, простой язык; объясняй **зачем** изменение и **что меняется для продукта/разработчика**, а не перечисляй идентификаторы через точку с запятой.
+
+| Do | Don't |
+|----|-------|
+| «Чтение глав бесплатно; Pass открывает premium-контент, не текст» | «Q-22 free-read gates; drop requires_pass_to_read» |
+| «Покупки в mock-режиме: intent на сервере, затем entitlements после входа» | «server-backed mock billing via Supabase RPC pipeline» |
+| «Убрали настройку раннего доступа у автора — фиксированные 3 дня» | «drop subscriber_early_access_days; SUBSCRIBER_EARLY_ACCESS_DAYS=3» |
+
+Язык: **русский** для бизнес-смысла; scope/prefix — как в истории repo. Имена RPC, tier keys, ticket id — только если без них непонятно; тогда в backticks или после пояснения.
+
+```text
+# ❌ Телеграф
+feat(monetization): server-backed mock billing and Q-22 free-read gates.
+
+BillingAdapter pipeline via Supabase RPC; fixed 3-day early access; entitlements lifecycle.
+
+# ✅ Человекочитаемо
+feat(monetization): покупки через Supabase без StoreKit.
+
+Игрок может купить Pass в mock-режиме: intent на сервере, complete_purchase и обновление прав после входа и покупки.
+```
+
 ## Spec before code
 
 **Source of truth:** `docs/specs/` and `docs/monetization/`. See `documentation.mdc` for layers and paths.
@@ -109,6 +137,7 @@ export const monetizationRepository = new MonetizationRepository();
 | Entitlements | `docs/monetization/ENTITLEMENTS.md` |
 | Analytics events | `docs/specs/analytics-events.md` |
 | Tech architecture | `docs/specs/tech-architecture.md` |
+| Settings (mobile) | `docs/specs/mobile/settings.md` |
 
 ## No Legacy — Spec Is the Contract
 

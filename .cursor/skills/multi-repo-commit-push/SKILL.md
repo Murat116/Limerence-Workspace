@@ -35,7 +35,7 @@ disable-model-invocation: true
 - **NEVER** коммитить `.env`, ключи, credentials
 - Коммит **только** когда пользователь попросил (этот skill = разрешение)
 - Push **только** когда пользователь попросил push (по умолчанию skill включает push; если сказали «только commit» — без push)
-- Сообщение коммита — HEREDOC, 1–2 предложения, **why** > what
+- Сообщение коммита — HEREDOC, conventional prefix + **человекочитаемое** тело (1–2 предложения, **why** > what). См. `common.mdc` → «Commit messages — human-readable»
 - После hook failure — **новый** commit, не amend (если hook не auto-fixed)
 
 ## Workflow
@@ -78,19 +78,21 @@ Cross-cutting monetization: часто **три коммита** — workspace (
 
 ### 3. Commit message style
 
-Следовать стилю последних коммитов repo:
+Следовать стилю последних коммитов repo и **`common.mdc` → Commit messages — human-readable**`.
 
 - workspace: `docs: …`, `refactor(rules): …`, `chore: …`
-- mobile: `feat(monetization): …`, `docs: …`, imperative English/Russian mix OK
+- mobile: `feat(monetization): …`, `docs: …`
 - web: `feat: …`, `docs: …`
+
+Prefix — conventional; **тело** — полные предложения на русском (бизнес-смысл), без телеграфа и slug-цепочек.
 
 Пример:
 
 ```bash
 git -C /Users/anmin/Limerence/Limerence-Workspace commit -m "$(cat <<'EOF'
-docs(monetization): align access model with Q-22 free read.
+docs(monetization): чтение глав бесплатно, Pass — только premium.
 
-Drop requires_pass_to_read from spec; add billing pipeline migrations.
+Убрали requires_pass_to_read из спеки; добавили миграции billing pipeline для mock-покупок.
 EOF
 )"
 ```
