@@ -140,6 +140,20 @@
 
 ---
 
+## Amendment: scenarist UX (2026-06-29)
+
+Дочерняя фича `web-script-editor-scenarist-ux` **не отменяет** текстовые stat gates.
+
+| Тема | v1 (этот spec) | Scenarist UX |
+|------|----------------|--------------|
+| Inspector-only в тексте | badge / `;` comment | **inline widgets** (чипы) |
+| Stat gates | editable текст | editable текст + **syntax highlight** |
+| Рассказчик в DSL | не описан | `#Речь, текст` → `person_uuid` null |
+
+Полный контракт: `.cursor/feature-work/web-script-editor-scenarist-ux/03-approved-spec.md`
+
+---
+
 ## Глоссарий
 
 | Термин в коде | По-русски | Где живёт |
